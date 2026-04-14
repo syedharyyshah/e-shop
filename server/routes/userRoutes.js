@@ -133,4 +133,68 @@ router.get('/approved', async (req, res) => {
   }
 });
 
+// DELETE user permanently (admin only)
+router.delete('/:id/delete', async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ 
+      message: 'User deleted permanently',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET user settings
+router.get('/:id/settings', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({
+      settings: user.settings || { lowStockThreshold: 20, highStockThreshold: 200 }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PUT update user settings
+router.put('/:id/settings', async (req, res) => {
+  try {
+    const { lowStockThreshold, highStockThreshold } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { 
+        settings: {
+          lowStockThreshold: lowStockThreshold || 20,
+          highStockThreshold: highStockThreshold || 200
+        }
+      },
+      { new: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json({
+      message: 'Settings updated successfully',
+      settings: user.settings
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
