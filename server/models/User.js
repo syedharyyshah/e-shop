@@ -49,6 +49,16 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin'],
     default: 'user'
   },
+  settings: {
+    lowStockThreshold: {
+      type: Number,
+      default: 20
+    },
+    highStockThreshold: {
+      type: Number,
+      default: 200
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now
