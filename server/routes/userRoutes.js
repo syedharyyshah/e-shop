@@ -36,6 +36,34 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// GET current user profile
+router.get('/me', async (req, res) => {
+  try {
+    const userId = req.query.userId;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      shopName: user.shopName,
+      phoneNumber: user.phoneNumber,
+      address: user.address,
+      role: user.role,
+      isApproved: user.isApproved
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // GET all users
 router.get('/', async (req, res) => {
   try {
