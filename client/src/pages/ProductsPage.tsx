@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Search, Pencil, Trash2, X, SlidersHorizontal, AlertTriangle, CheckCircle2, TrendingUp, PackageX, LayoutGrid, Table2, Building2, Package, Loader2, Boxes, ShoppingCart, ChevronUp } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, X, SlidersHorizontal, AlertTriangle, CheckCircle2, TrendingUp, PackageX, LayoutGrid, Table2, Building2, Package, Loader2, Boxes, ShoppingCart, ChevronUp, FileSpreadsheet } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { productApi } from '@/services/productApi';
 import { Product, ProductFilters, ViewMode, StockStatus } from '@/types/product';
@@ -82,6 +82,12 @@ export default function ProductsPage() {
   const [companies, setCompanies] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [inventoryStats, setInventoryStats] = useState<{
+    outOfStock: number;
+    lowStock: number;
+    inStock: number;
+    highStock: number;
+  }>({ outOfStock: 0, lowStock: 0, inStock: 0, highStock: 0 });
 
   // Dynamic stock status function using user's custom thresholds
   const getStockStatus = useCallback((stock: number): StockStatus => {
@@ -172,6 +178,24 @@ export default function ProductsPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Fetch inventory stats
+  const fetchInventoryStats = useCallback(async () => {
+    try {
+      const response = await productApi.getInventoryStats(lowStockThreshold, highStockThreshold);
+      if (response.success && response.data) {
+        setInventoryStats({
+          outOfStock: response.data.overall.outOfStock || 0,
+          lowStock: response.data.overall.lowStock || 0,
+          inStock: response.data.overall.inStock || 0,
+          highStock: response.data.overall.highStock || 0,
+        });
+      }
+    } catch (err) {
+      // Silently fail - stats are not critical
+      console.error('Failed to fetch inventory stats:', err);
+    }
+  }, [lowStockThreshold, highStockThreshold]);
+
   // Fetch products
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -185,23 +209,29 @@ export default function ProductsPage() {
         maxPrice: priceMax || undefined,
         sortBy,
         sortOrder,
+        lowStockThreshold,
+        highStockThreshold,
       };
       
       const response = await productApi.getProducts(filters);
       setProducts(response.data);
       setCategories(response.filters.categories);
-      setCompanies(response.filters.companies);
+      setCompanies(response.filters?.companies || []);
     } catch (error) {
       console.error('Failed to fetch products:', error);
       toast.error('Failed to load products');
     } finally {
       setIsLoading(false);
     }
-  }, [search, stockFilter, categoryFilter, companyFilter, priceMin, priceMax, sortBy, sortOrder]);
+  }, [searchParams, lowStockThreshold, highStockThreshold]);
 
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    fetchInventoryStats();
+  }, [fetchInventoryStats]);
 
   // Save view mode preference
   useEffect(() => {
@@ -352,6 +382,7 @@ export default function ProductsPage() {
       setShowMultiUnitFields(false);
       setDialogOpen(false);
       fetchProducts();
+      fetchInventoryStats(); // Refresh inventory stats
     } catch (error: any) {
       console.error('Failed to add product:', error);
       toast.error(error.message || 'Failed to add product');
@@ -372,6 +403,7 @@ export default function ProductsPage() {
       await productApi.deleteProduct(productToDelete._id);
       toast.success('Product deleted successfully');
       fetchProducts();
+      fetchInventoryStats(); // Refresh inventory stats
     } catch (error) {
       console.error('Failed to delete product:', error);
       toast.error('Failed to delete product');
@@ -440,6 +472,7 @@ export default function ProductsPage() {
       resetForm();
       setDialogOpen(false);
       fetchProducts();
+      fetchInventoryStats(); // Refresh inventory stats
     } catch (error: any) {
       console.error('Failed to update product:', error);
       toast.error(error.message || 'Failed to update product');
@@ -459,6 +492,66 @@ export default function ProductsPage() {
 
   const handleSaleComplete = () => {
     fetchProducts(); // Refresh product list after sale
+    fetchInventoryStats(); // Refresh inventory stats
+  };
+
+  // Export products to Excel
+  const exportToExcel = () => {
+    if (products.length === 0) {
+      toast.error('No products to export');
+      return;
+    }
+
+    const headers = [
+      'Product Name', 'Company', 'Category', 'Price (PKR)', 
+      'Base Stock', 'Base Unit', 'Parent Unit', 'Units Per Parent', 'Parent Stock',
+      'Stock Status', 'Purchase Price', 'Cost Per Unit', 'Profit Per Unit'
+    ];
+    
+    const rows = products.map(p => {
+      // Calculate parent stock if multi-unit
+      const parentStock = p.parentUnit && p.unitsPerParent 
+        ? Math.floor(p.stockQuantity / p.unitsPerParent)
+        : '-';
+      
+      return [
+        p.productName,
+        p.companyName,
+        p.category,
+        p.price,
+        p.stockQuantity,
+        p.baseUnit,
+        p.parentUnit || '-',
+        p.unitsPerParent || '-',
+        parentStock,
+        getStockStatus(p.stockQuantity),
+        p.purchasePrice || '-',
+        p.costPerUnit || '-',
+        p.profitPerUnit || '-'
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `products_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    const filterLabel = stockFilter === 'all' ? 'All Products' : 
+      stockFilter === 'out-of-stock' ? 'Out of Stock' :
+      stockFilter === 'low-stock' ? 'Low Stock' :
+      stockFilter === 'in-stock' ? 'In Stock' :
+      stockFilter === 'high-stock' ? 'High Stock' : 'Filtered';
+    
+    toast.success(`${products.length} ${filterLabel} products downloaded`);
   };
 
   return (
@@ -501,6 +594,13 @@ export default function ProductsPage() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+            <Button
+              className="shrink-0 bg-[#217346] hover:bg-[#1a5c38] text-white border-0"
+              onClick={exportToExcel}
+              disabled={products.length === 0}
+            >
+              <FileSpreadsheet className="mr-2 h-4 w-4" /> Download Excel
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
               if (!open) resetForm();
@@ -829,6 +929,77 @@ export default function ProductsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Stock Summary Badges - Using actual backend data */}
+        <div className="flex flex-wrap items-center gap-2">
+          {(() => {
+            const totalProducts = inventoryStats.outOfStock + inventoryStats.lowStock + inventoryStats.inStock + inventoryStats.highStock;
+            const badges = [
+              { 
+                key: 'all', 
+                count: totalProducts, 
+                label: 'All Products', 
+                bg: 'bg-slate-100 dark:bg-slate-800', 
+                text: 'text-slate-700 dark:text-slate-300', 
+                border: 'border-slate-200 dark:border-slate-700',
+                icon: Boxes
+              },
+              { 
+                key: 'out-of-stock', 
+                count: inventoryStats.outOfStock, 
+                label: 'Out of Stock', 
+                bg: 'bg-red-100 dark:bg-red-950/40', 
+                text: 'text-red-700 dark:text-red-400', 
+                border: 'border-red-200 dark:border-red-800',
+                icon: PackageX
+              },
+              { 
+                key: 'low-stock', 
+                count: inventoryStats.lowStock, 
+                label: 'Low Stock', 
+                bg: 'bg-amber-100 dark:bg-amber-950/40', 
+                text: 'text-amber-700 dark:text-amber-400', 
+                border: 'border-amber-200 dark:border-amber-800',
+                icon: AlertTriangle
+              },
+              { 
+                key: 'in-stock', 
+                count: inventoryStats.inStock, 
+                label: 'In Stock', 
+                bg: 'bg-emerald-100 dark:bg-emerald-950/40', 
+                text: 'text-emerald-700 dark:text-emerald-400', 
+                border: 'border-emerald-200 dark:border-emerald-800',
+                icon: CheckCircle2
+              },
+              { 
+                key: 'high-stock', 
+                count: inventoryStats.highStock, 
+                label: 'High Stock', 
+                bg: 'bg-blue-100 dark:bg-blue-950/40', 
+                text: 'text-blue-700 dark:text-blue-400', 
+                border: 'border-blue-200 dark:border-blue-800',
+                icon: TrendingUp
+              },
+            ];
+            
+            return badges.map(badge => (
+              <button
+                key={badge.key}
+                onClick={() => updateParam('stock', badge.key)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${badge.bg} ${badge.text} ${badge.border} hover:shadow-md transition-all duration-200 ${stockFilter === badge.key ? 'ring-2 ring-offset-1 ring-primary' : ''}`}
+              >
+                <badge.icon className="h-4 w-4" />
+                <div className="flex flex-col items-start">
+                  <span className="text-lg font-bold leading-none">{badge.count}</span>
+                  <span className="text-xs font-medium opacity-90">{badge.label}</span>
+                </div>
+                {stockFilter === badge.key && (
+                  <span className="ml-1 text-[10px] bg-white/50 dark:bg-black/30 px-1.5 py-0.5 rounded">Active</span>
+                )}
+              </button>
+            ));
+          })()}
+        </div>
 
         {/* Results summary */}
         <div className="flex items-center justify-between">

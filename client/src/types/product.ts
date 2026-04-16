@@ -35,6 +35,8 @@ export interface ProductFilters {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  lowStockThreshold?: number;
+  highStockThreshold?: number;
 }
 
 export interface ProductsResponse {
@@ -174,6 +176,8 @@ export interface InventoryStats {
     totalValue: number;
     outOfStock: number;
     lowStock: number;
+    inStock: number;
+    highStock: number;
   };
   byCategory: {
     _id: string;

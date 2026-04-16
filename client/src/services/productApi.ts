@@ -118,10 +118,14 @@ export const productApi = {
   },
 
   // Get inventory stats (filtered by userId)
-  getInventoryStats: async (): Promise<{ success: boolean; data: InventoryStats }> => {
+  getInventoryStats: async (lowThreshold?: number, highThreshold?: number): Promise<{ success: boolean; data: InventoryStats }> => {
     const userId = getUserId();
-    const params = userId ? `?userId=${userId}` : '';
-    const response = await fetch(`${API_BASE_URL}/products/stats/inventory${params}`);
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (lowThreshold) params.append('lowStockThreshold', String(lowThreshold));
+    if (highThreshold) params.append('highStockThreshold', String(highThreshold));
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await fetch(`${API_BASE_URL}/products/stats/inventory${queryString}`);
     return handleResponse<{ success: boolean; data: InventoryStats }>(response);
   },
 };
