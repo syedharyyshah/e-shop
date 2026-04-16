@@ -105,7 +105,9 @@ exports.getProducts = async (req, res) => {
       sortOrder = 'desc',
       page = 1,
       limit = 100,
-      userId
+      userId,
+      lowStockThreshold = 20,
+      highStockThreshold = 200
     } = req.query;
 
     // Build filter object
@@ -143,17 +145,23 @@ exports.getProducts = async (req, res) => {
       filter.price = { ...filter.price, $lte: Number(maxPrice) };
     }
 
-    // Stock status filter
+    // Stock status filter with custom thresholds
+    const lowThreshold = parseInt(lowStockThreshold) || 20;
+    const highThreshold = parseInt(highStockThreshold) || 200;
+    
     if (stockStatus && stockStatus !== 'all') {
       switch (stockStatus) {
         case 'out-of-stock':
           filter.stockQuantity = 0;
           break;
         case 'low-stock':
-          filter.stockQuantity = { $gt: 0, $lte: 20 };
+          filter.stockQuantity = { $gt: 0, $lte: lowThreshold };
           break;
         case 'in-stock':
-          filter.stockQuantity = { $gt: 20 };
+          filter.stockQuantity = { $gt: lowThreshold, $lt: highThreshold };
+          break;
+        case 'high-stock':
+          filter.stockQuantity = { $gte: highThreshold };
           break;
       }
     }
@@ -409,13 +417,16 @@ exports.getLowStockProducts = async (req, res) => {
 // @access  Public
 exports.getInventoryStats = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const { userId, lowStockThreshold = 20, highStockThreshold = 200 } = req.query;
     
     // Build match filter
     const matchFilter = {};
     if (userId) {
       matchFilter.userId = new mongoose.Types.ObjectId(userId);
     }
+
+    const lowThreshold = parseInt(lowStockThreshold);
+    const highThreshold = parseInt(highStockThreshold);
 
     const stats = await Product.aggregate([
       { $match: matchFilter },
@@ -428,7 +439,13 @@ exports.getInventoryStats = async (req, res) => {
             $sum: { $cond: [{ $eq: ['$stockQuantity', 0] }, 1, 0] }
           },
           lowStock: {
-            $sum: { $cond: [{ $and: [{ $gt: ['$stockQuantity', 0] }, { $lte: ['$stockQuantity', 20] }] }, 1, 0] }
+            $sum: { $cond: [{ $and: [{ $gt: ['$stockQuantity', 0] }, { $lte: ['$stockQuantity', lowThreshold] }] }, 1, 0] }
+          },
+          inStock: {
+            $sum: { $cond: [{ $and: [{ $gt: ['$stockQuantity', lowThreshold] }, { $lt: ['$stockQuantity', highThreshold] }] }, 1, 0] }
+          },
+          highStock: {
+            $sum: { $cond: [{ $gte: ['$stockQuantity', highThreshold] }, 1, 0] }
           }
         }
       }
@@ -453,7 +470,9 @@ exports.getInventoryStats = async (req, res) => {
           totalProducts: 0,
           totalValue: 0,
           outOfStock: 0,
-          lowStock: 0
+          lowStock: 0,
+          inStock: 0,
+          highStock: 0
         },
         byCategory: categoryStats
       }
