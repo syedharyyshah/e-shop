@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import { productApi } from '@/services/productApi';
 import { Product, ProductFilters, ViewMode, StockStatus } from '@/types/product';
 import { useStore } from '@/store/useStore';
 import { toast } from 'sonner';
-import { SaleDialog } from '@/components/SaleDialog';
 
 function formatPKR(price: number): string {
   return new Intl.NumberFormat('en-PK', {
@@ -67,14 +66,13 @@ const SORT_OPTIONS = [
 export default function ProductsPage() {
   const { lowStockThreshold, highStockThreshold } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>((localStorage.getItem('productViewMode') as ViewMode) || 'table');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [saleDialogOpen, setSaleDialogOpen] = useState(false);
-  const [productToSell, setProductToSell] = useState<Product | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -486,13 +484,7 @@ export default function ProductsPage() {
       toast.error('This product is out of stock');
       return;
     }
-    setProductToSell(product);
-    setSaleDialogOpen(true);
-  };
-
-  const handleSaleComplete = () => {
-    fetchProducts(); // Refresh product list after sale
-    fetchInventoryStats(); // Refresh inventory stats
+    navigate('/invoices', { state: { selectedProduct: product } });
   };
 
   // Export products to Excel
@@ -1339,14 +1331,6 @@ export default function ProductsPage() {
           </Card>
         )}
       </div>
-
-      {/* Sale Dialog */}
-      <SaleDialog
-        product={productToSell}
-        open={saleDialogOpen}
-        onOpenChange={setSaleDialogOpen}
-        onSaleComplete={handleSaleComplete}
-      />
 
       {/* Back to Top Button */}
       {showBackToTop && (

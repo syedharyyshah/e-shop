@@ -9,6 +9,7 @@ import {
   Settings,
   ChevronLeft,
   Store,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +19,7 @@ const navItems = [
   { label: 'Orders', icon: ShoppingCart, path: '/orders' },
   { label: 'Customers', icon: Users, path: '/customers' },
   { label: 'Invoice Generator', icon: FileText, path: '/invoices' },
+  { label: 'Loans', icon: Wallet, path: '/loans' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ];
 
