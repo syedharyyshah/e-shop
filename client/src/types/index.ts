@@ -1,14 +1,4 @@
-export interface Product {
-  id: string;
-  name: string;
-  image: string;
-  price: number;
-  stock: number;
-  category: string;
-  description?: string;
-  dateAdded: string;
-  dateModified?: string;
-}
+export type { Product } from './product';
 
 export interface Order {
   id: string;

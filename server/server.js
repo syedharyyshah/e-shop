@@ -4,7 +4,9 @@ const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const productRoutes = require('./routes/productRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 const seedRoutes = require('./routes/seedRoutes');
+const loanRoutes = require('./routes/loanRoutes');
 
 dotenv.config();
 
@@ -26,7 +28,9 @@ connectDB();
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api/seed', seedRoutes);
+app.use('/api/loans', loanRoutes);
 
 // 404 handler - place at end
 app.use((req, res) => {

@@ -10,6 +10,7 @@ import ProductsPage from "@/pages/ProductsPage";
 import OrdersPage from "@/pages/OrdersPage";
 import CustomersPage from "@/pages/CustomersPage";
 import InvoicePage from "@/pages/InvoicePage";
+import LoansPage from "@/pages/LoansPage";
 import SettingsPage from "@/pages/SettingsPage";
 import AdminLoginPage from "@/pages/AdminLoginPage";
 import AdminDashboardPage from "@/pages/AdminDashboardPage";
@@ -57,6 +58,11 @@ const App = () => (
             <Route path="/invoices" element={
               <ProtectedRoute allowedRoles={['user', 'admin']}>
                 <InvoicePage />
+              </ProtectedRoute>
+            } />
+            <Route path="/loans" element={
+              <ProtectedRoute allowedRoles={['user', 'admin']}>
+                <LoansPage />
               </ProtectedRoute>
             } />
             <Route path="/settings" element={

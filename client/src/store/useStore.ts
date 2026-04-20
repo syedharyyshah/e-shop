@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { Product } from '@/types';
-import { products as initialProducts, orders as initialOrders } from '@/data/mockData';
+import { Product } from '@/types/product';
+import { orders as initialOrders } from '@/data/mockData';
 import type { Order } from '@/types';
+import { productApi } from '@/services/productApi';
 
 interface AppStore {
   products: Product[];
@@ -9,7 +10,9 @@ interface AppStore {
   sidebarOpen: boolean;
   lowStockThreshold: number;
   highStockThreshold: number;
-  addProduct: (product: Omit<Product, 'id' | 'dateAdded'>) => void;
+  setProducts: (products: Product[]) => void;
+  refreshProducts: () => Promise<void>;
+  addProduct: (product: Omit<Product, '_id' | 'createdAt' | 'updatedAt'>) => void;
   updateProduct: (id: string, product: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
   toggleSidebar: () => void;
@@ -19,27 +22,38 @@ interface AppStore {
 }
 
 export const useStore = create<AppStore>((set) => ({
-  products: initialProducts,
+  products: [],
   orders: initialOrders,
   sidebarOpen: true,
   lowStockThreshold: 20,
   highStockThreshold: 200,
+  setProducts: (products) => set({ products }),
+  refreshProducts: async () => {
+    try {
+      const response = await productApi.getProducts();
+      if (response.success) {
+        set({ products: response.data });
+      }
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+    }
+  },
   addProduct: (product) =>
     set((state) => ({
       products: [
         ...state.products,
-        { ...product, id: Date.now().toString(), dateAdded: new Date().toISOString().split('T')[0] },
+        { ...product, _id: Date.now().toString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       ],
     })),
   updateProduct: (id, updates) =>
     set((state) => ({
       products: state.products.map((p) =>
-        p.id === id ? { ...p, ...updates, dateModified: new Date().toISOString().split('T')[0] } : p
+        p._id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
       ),
     })),
   deleteProduct: (id) =>
     set((state) => ({
-      products: state.products.filter((p) => p.id !== id),
+      products: state.products.filter((p) => p._id !== id),
     })),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
