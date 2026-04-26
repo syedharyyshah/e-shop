@@ -14,9 +14,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Printer, Save, Minus, ShoppingCart, X, Search, Package, ChevronLeft } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, Minus, ShoppingCart, X, Search, Package, ChevronLeft, CreditCard, Banknote, ArrowRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { orderApi } from '@/services/orderApi';
+import { invoiceLoanApi } from '@/services/invoiceLoanApi';
 import { userApi } from '@/services/userApi';
 import { useToast } from '@/hooks/use-toast';
 import '@/styles/invoice.css';
@@ -45,11 +46,15 @@ export default function InvoicePage() {
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerCnic, setCustomerCnic] = useState('');
   const [shopName, setShopName] = useState('ShopFlow');
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isQuantityDialogOpen, setIsQuantityDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'loan'>('cash');
+  const [dueDate, setDueDate] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [baseQty, setBaseQty] = useState(0);
@@ -242,35 +247,49 @@ export default function InvoicePage() {
     };
   };
 
+  const openPaymentDialog = () => {
+    // Validation - only items are required for regular customers
+    // Customer details are optional by default, required only for loan
+    if (items.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please add at least one item',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check if all items have quantities
+    const emptyItem = items.find(item => getTotalBaseUnits(item) === 0);
+    if (emptyItem) {
+      toast({
+        title: 'Error',
+        description: `Please add quantity for ${emptyItem.name}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check stock availability
+    const stockIssue = items.find(item => !checkStock(item).sufficient);
+    if (stockIssue) {
+      toast({
+        title: 'Error',
+        description: `Insufficient stock for ${stockIssue.name}. Available: ${stockIssue.stockQuantity}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Open payment method dialog
+    setPaymentMethod('cash');
+    setDueDate('');
+    setIsPaymentDialogOpen(true);
+  };
+
   const saveOrder = async () => {
-    // Validation
-    if (!customerName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter customer name',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!customerAddress.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter customer address',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!customerPhone.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Please enter customer phone',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    // Validation - only items are required for regular customers
+    // Customer details are optional by default, required only for loan
     if (items.length === 0) {
       toast({
         title: 'Error',
@@ -305,9 +324,9 @@ export default function InvoicePage() {
     setIsSaving(true);
     try {
       const orderData = {
-        customerName: customerName.trim(),
-        customerAddress: customerAddress.trim(),
-        customerPhone: customerPhone.trim(),
+        customerName: customerName.trim() || 'Walk-in Customer',
+        customerAddress: customerAddress.trim() || '-',
+        customerPhone: customerPhone.trim() || '-',
         items: items.map(item => {
           const totalBaseUnits = getTotalBaseUnits(item);
           const isMultiUnit = item.parentQuantity > 0;
@@ -325,23 +344,127 @@ export default function InvoicePage() {
       };
 
       const response = await orderApi.createOrder(orderData);
+      const orderId = response.data._id;
       
-      toast({
-        title: 'Success',
-        description: 'Order saved successfully!',
-      });
+      // If payment method is loan, create invoice loan
+      if (paymentMethod === 'loan') {
+        // Loan requires all customer details including CNIC
+        if (!customerName.trim()) {
+          toast({
+            title: 'Error',
+            description: 'Customer name is required for loan',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+          return;
+        }
 
-      // Refresh products to get updated stock
-      await refreshProducts();
+        if (!customerAddress.trim()) {
+          toast({
+            title: 'Error',
+            description: 'Customer address is required for loan',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+          return;
+        }
 
-      // Reset form
-      setCustomerName('');
-      setCustomerAddress('');
-      setCustomerPhone('');
-      setItems([]);
+        if (!customerPhone.trim()) {
+          toast({
+            title: 'Error',
+            description: 'Customer phone is required for loan',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+          return;
+        }
 
-      // Navigate to orders page with refresh flag
-      navigate('/orders', { state: { orderCreated: true } });
+        // Pakistani phone validation (03XXXXXXXXX - 11 digits starting with 0)
+        const phoneRegex = /^0[0-9]{10}$/;
+        if (!phoneRegex.test(customerPhone.trim())) {
+          toast({
+            title: 'Error',
+            description: 'Please enter valid Pakistani phone number (03XXXXXXXXX)',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        if (!customerCnic.trim()) {
+          toast({
+            title: 'Error',
+            description: 'Customer CNIC is required for loan',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        // CNIC validation (13 digits without dashes)
+        const cnicRegex = /^\d{13}$/;
+        if (!cnicRegex.test(customerCnic.trim())) {
+          toast({
+            title: 'Error',
+            description: 'Please enter valid 13-digit CNIC number (without dashes)',
+            variant: 'destructive',
+          });
+          setIsSaving(false);
+          return;
+        }
+
+        const loanItems = items.map(item => {
+          const totalBaseUnits = getTotalBaseUnits(item);
+          return {
+            productId: item.productId,
+            productName: item.name,
+            quantity: totalBaseUnits,
+            unitPrice: item.unitPrice,
+            total: item.total,
+          };
+        });
+
+        const loanData = {
+          orderId: orderId,
+          customerName: customerName.trim(),
+          customerPhone: customerPhone.trim(),
+          customerCNIC: customerCnic.trim(),
+          customerAddress: customerAddress.trim(),
+          items: loanItems,
+          totalAmount: total,
+          dueDate: dueDate || undefined,
+          notes: 'Invoice loan created from order',
+        };
+
+        await invoiceLoanApi.createInvoiceLoan(loanData);
+        
+        toast({
+          title: 'Success',
+          description: 'Order saved with loan successfully!',
+        });
+
+        // Refresh products to get updated stock
+        await refreshProducts();
+
+        // Reset form
+        // Refresh page after short delay to show fresh invoice
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Order saved successfully!',
+        });
+
+        // Refresh products to get updated stock
+        await refreshProducts();
+
+        // Refresh page after short delay to show fresh invoice
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
     } catch (error: any) {
       console.error('Error saving order:', error);
       toast({
@@ -368,10 +491,12 @@ export default function InvoicePage() {
   };
 
   const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-  const currentDate = new Date().toLocaleDateString('en-GB', {
+  const currentDate = new Date().toLocaleString('en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 
   return (
@@ -512,10 +637,13 @@ export default function InvoicePage() {
           {/* Form */}
           <div className="space-y-6">
             <Card className="border-none shadow-sm">
-              <CardHeader><CardTitle className="text-lg">Customer Details</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-lg">Customer Details</CardTitle>
+                <p className="text-xs text-muted-foreground">Optional for regular customers, required for loan</p>
+              </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label>Customer Name</Label>
+                  <Label>Customer Name <span className="text-muted-foreground">(Optional)</span></Label>
                   <Input
                     placeholder="Enter customer name"
                     value={customerName}
@@ -524,7 +652,7 @@ export default function InvoicePage() {
                   />
                 </div>
                 <div>
-                  <Label>Customer Address</Label>
+                  <Label>Customer Address <span className="text-muted-foreground">(Optional)</span></Label>
                   <Input
                     placeholder="Enter customer address"
                     value={customerAddress}
@@ -533,13 +661,26 @@ export default function InvoicePage() {
                   />
                 </div>
                 <div>
-                  <Label>Customer Phone</Label>
+                  <Label>Customer Phone <span className="text-muted-foreground">(Optional)</span></Label>
                   <Input
-                    placeholder="Enter customer phone"
+                    placeholder="03XXXXXXXXX (11 digits)"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     className="mt-1"
+                    maxLength={11}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Pakistani format: 03XXXXXXXXX (11 digits)</p>
+                </div>
+                <div>
+                  <Label>Customer CNIC <span className="text-amber-600 font-medium">(Required for Loan)</span></Label>
+                  <Input
+                    placeholder="XXXXXXXXXXXXX (13 digits)"
+                    value={customerCnic}
+                    onChange={(e) => setCustomerCnic(e.target.value)}
+                    className="mt-1"
+                    maxLength={13}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">13 digits without dashes - Required for Loan</p>
                 </div>
               </CardContent>
             </Card>
@@ -1096,7 +1237,7 @@ export default function InvoicePage() {
                 <div className="space-y-2">
                   <Button 
                     className="w-full" 
-                    onClick={saveOrder}
+                    onClick={openPaymentDialog}
                     disabled={isSaving}
                   >
                     <Save className="mr-2 h-4 w-4" /> 
@@ -1111,6 +1252,113 @@ export default function InvoicePage() {
           </Card>
         </div>
       </div>
+
+      {/* Payment Method Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Select Payment Method
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Payment Method Options */}
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setPaymentMethod('cash')}
+                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
+                  paymentMethod === 'cash'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <Banknote className={`h-8 w-8 ${paymentMethod === 'cash' ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`font-medium ${paymentMethod === 'cash' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Cash
+                </span>
+              </button>
+
+              <button
+                onClick={() => setPaymentMethod('loan')}
+                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
+                  paymentMethod === 'loan'
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <CreditCard className={`h-8 w-8 ${paymentMethod === 'loan' ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`font-medium ${paymentMethod === 'loan' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  Loan
+                </span>
+              </button>
+            </div>
+
+            {/* Due Date (only for loan) */}
+            {paymentMethod === 'loan' && (
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Due Date (Optional)</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Set a due date for when the loan should be paid
+                </p>
+              </div>
+            )}
+
+            {/* Order Summary */}
+            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Customer:</span>
+                <span className="font-medium">{customerName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Items:</span>
+                <span className="font-medium">{items.length}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Total Amount:</span>
+                <span className="font-bold text-primary">Rs. {total.toFixed(2)}</span>
+              </div>
+              {paymentMethod === 'loan' && (
+                <div className="flex justify-between text-sm pt-2 border-t">
+                  <span className="text-muted-foreground">Payment Type:</span>
+                  <Badge variant="secondary">Loan / Credit</Badge>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={saveOrder}
+              disabled={isSaving}
+              className="gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  {paymentMethod === 'loan' ? 'Create Loan Order' : 'Confirm Cash Payment'}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
