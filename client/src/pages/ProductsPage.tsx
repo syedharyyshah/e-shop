@@ -487,63 +487,120 @@ export default function ProductsPage() {
     navigate('/invoices', { state: { selectedProduct: product } });
   };
 
-  // Export products to Excel
+  // Export products to Excel with styling
   const exportToExcel = () => {
     if (products.length === 0) {
       toast.error('No products to export');
       return;
     }
 
-    const headers = [
-      'Product Name', 'Company', 'Category', 'Price (PKR)', 
-      'Base Stock', 'Base Unit', 'Parent Unit', 'Units Per Parent', 'Parent Stock',
-      'Stock Status', 'Purchase Price', 'Cost Per Unit', 'Profit Per Unit'
-    ];
-    
-    const rows = products.map(p => {
-      // Calculate parent stock if multi-unit
-      const parentStock = p.parentUnit && p.unitsPerParent 
-        ? Math.floor(p.stockQuantity / p.unitsPerParent)
-        : '-';
-      
-      return [
-        p.productName,
-        p.companyName,
-        p.category,
-        p.price,
-        p.stockQuantity,
-        p.baseUnit,
-        p.parentUnit || '-',
-        p.unitsPerParent || '-',
-        parentStock,
-        getStockStatus(p.stockQuantity),
-        p.purchasePrice || '-',
-        p.costPerUnit || '-',
-        p.profitPerUnit || '-'
-      ];
-    });
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `products_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+    const today = new Date().toLocaleDateString('en-GB');
     const filterLabel = stockFilter === 'all' ? 'All Products' : 
       stockFilter === 'out-of-stock' ? 'Out of Stock' :
       stockFilter === 'low-stock' ? 'Low Stock' :
       stockFilter === 'in-stock' ? 'In Stock' :
       stockFilter === 'high-stock' ? 'High Stock' : 'Filtered';
+
+    // CSS styles for Excel-compatible HTML
+    const styles = `
+      <style>
+        table { border-collapse: collapse; width: 100%; font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
+        th { background-color: #F4B084; color: #000000; font-weight: bold; text-align: left; padding: 8px; border: 1px solid #D9D9D9; }
+        td { padding: 6px 8px; border: 1px solid #D9D9D9; text-align: left; }
+        tr:nth-child(even) { background-color: #FCE4D6; }
+        tr:nth-child(odd) { background-color: #FFFFFF; }
+        tr:hover { background-color: #F8CBAD; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .price { font-weight: bold; color: #C65911; }
+        .stock-out { color: #FF0000; font-weight: bold; }
+        .stock-low { color: #FFC000; font-weight: bold; }
+        .stock-in { color: #00B050; font-weight: bold; }
+        .stock-high { color: #0070C0; font-weight: bold; }
+        .header-row { background-color: #F4B084 !important; }
+        .report-title { font-size: 14pt; font-weight: bold; margin-bottom: 10px; color: #C65911; }
+        .report-date { font-size: 10pt; color: #666; margin-bottom: 15px; }
+        .profit-positive { color: #00B050; font-weight: bold; }
+        .profit-negative { color: #FF0000; font-weight: bold; }
+      </style>
+    `;
+
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        ${styles}
+      </head>
+      <body>
+        <div class="report-title">Products Report - ${filterLabel}</div>
+        <div class="report-date">Generated on: ${today} | Total Records: ${products.length}</div>
+        <table>
+          <thead>
+            <tr class="header-row">
+              <th>S.No</th>
+              <th>Product Name</th>
+              <th>Company</th>
+              <th>Category</th>
+              <th>Price (PKR)</th>
+              <th>Base Stock</th>
+              <th>Base Unit</th>
+              <th>Parent Unit</th>
+              <th>Units/Parent</th>
+              <th>Parent Stock</th>
+              <th>Stock Status</th>
+              <th>Purchase Price</th>
+              <th>Cost/Unit</th>
+              <th>Profit/Unit</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${products.map((p, index) => {
+              const parentStock = p.parentUnit && p.unitsPerParent 
+                ? Math.floor(p.stockQuantity / p.unitsPerParent)
+                : '-';
+              const status = getStockStatus(p.stockQuantity);
+              const statusClass = status === 'out-of-stock' ? 'stock-out' : 
+                status === 'low-stock' ? 'stock-low' :
+                status === 'high-stock' ? 'stock-high' : 'stock-in';
+              const profit = p.profitPerUnit || 0;
+              const profitClass = profit > 0 ? 'profit-positive' : profit < 0 ? 'profit-negative' : '';
+              
+              return `
+                <tr>
+                  <td class="text-center">${index + 1}</td>
+                  <td><b>${p.productName}</b></td>
+                  <td>${p.companyName}</td>
+                  <td>${p.category}</td>
+                  <td class="text-right price">${p.price.toFixed(2)}</td>
+                  <td class="text-center">${p.stockQuantity}</td>
+                  <td class="text-center">${p.baseUnit}</td>
+                  <td class="text-center">${p.parentUnit || '-'}</td>
+                  <td class="text-center">${p.unitsPerParent || '-'}</td>
+                  <td class="text-center">${parentStock}</td>
+                  <td class="text-center ${statusClass}">${status}</td>
+                  <td class="text-right">${p.purchasePrice ? p.purchasePrice.toFixed(2) : '-'}</td>
+                  <td class="text-right">${p.costPerUnit ? p.costPerUnit.toFixed(2) : '-'}</td>
+                  <td class="text-right ${profitClass}">${p.profitPerUnit ? p.profitPerUnit.toFixed(2) : '-'}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    // Create and download HTML file (opens in Excel)
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `products_${new Date().toISOString().split('T')[0]}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     
-    toast.success(`${products.length} ${filterLabel} products downloaded`);
+    toast.success(`${products.length} ${filterLabel} products exported with formatting`);
   };
 
   return (

@@ -54,24 +54,24 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, 'Shop name cannot exceed 100 characters']
   },
-  // Customer Details
+  // Customer Details (optional for regular customers, required for loan)
   customerName: {
     type: String,
-    required: [true, 'Customer name is required'],
     trim: true,
-    maxlength: [100, 'Customer name cannot exceed 100 characters']
+    maxlength: [100, 'Customer name cannot exceed 100 characters'],
+    default: 'Walk-in Customer'
   },
   customerAddress: {
     type: String,
-    required: [true, 'Customer address is required'],
     trim: true,
-    maxlength: [500, 'Customer address cannot exceed 500 characters']
+    maxlength: [500, 'Customer address cannot exceed 500 characters'],
+    default: '-'
   },
   customerPhone: {
     type: String,
-    required: [true, 'Customer phone is required'],
     trim: true,
-    maxlength: [20, 'Customer phone cannot exceed 20 characters']
+    maxlength: [20, 'Customer phone cannot exceed 20 characters'],
+    default: '-'
   },
   // Order Items
   items: [orderItemSchema],
