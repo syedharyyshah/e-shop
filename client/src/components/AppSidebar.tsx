@@ -17,9 +17,9 @@ const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { label: 'Products', icon: Package, path: '/products' },
   { label: 'Orders', icon: ShoppingCart, path: '/orders' },
+  { label: 'Loans', icon: Wallet, path: '/loans' },
   { label: 'Customers', icon: Users, path: '/customers' },
   { label: 'Invoice Generator', icon: FileText, path: '/invoices' },
-  { label: 'Loans', icon: Wallet, path: '/loans' },
   { label: 'Settings', icon: Settings, path: '/settings' },
 ];
 

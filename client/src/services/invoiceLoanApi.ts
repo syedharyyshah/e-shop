@@ -154,6 +154,13 @@ export const invoiceLoanApi = {
     const response = await fetch(`${API_BASE_URL}/invoice-loans/stats/overview${params}`);
     return handleResponse(response);
   },
+
+  getUniqueCustomers: async (): Promise<{ success: boolean; count: number; data: any[] }> => {
+    const userId = getUserId();
+    const params = userId ? `?userId=${userId}` : '';
+    const response = await fetch(`${API_BASE_URL}/invoice-loans/customers${params}`);
+    return handleResponse(response);
+  },
 };
 
 export { InvoiceLoanApiError };

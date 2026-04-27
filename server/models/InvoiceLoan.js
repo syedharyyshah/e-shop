@@ -24,9 +24,10 @@ const invoiceLoanSchema = new mongoose.Schema({
   },
   customerCNIC: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
-    match: [/^\d{13}$/, 'Please enter valid 13-digit CNIC number']
+    default: '',
+    match: [/^$|^\d{13}$/, 'Please enter valid 13-digit CNIC number or leave empty']
   },
   customerAddress: {
     type: String,

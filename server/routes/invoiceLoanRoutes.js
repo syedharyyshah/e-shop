@@ -7,12 +7,16 @@ const {
   addPayment,
   updateInvoiceLoan,
   deleteInvoiceLoan,
-  getInvoiceLoanStats
+  getInvoiceLoanStats,
+  getUniqueCustomers
 } = require('../controllers/invoiceLoanController');
 
 router.route('/')
   .get(getInvoiceLoans)
   .post(createInvoiceLoan);
+
+router.route('/customers')
+  .get(getUniqueCustomers);
 
 router.route('/stats/overview')
   .get(getInvoiceLoanStats);

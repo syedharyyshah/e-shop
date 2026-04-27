@@ -24,4 +24,14 @@ export const userApi = {
     const response = await fetch(`${API_BASE_URL}/users/me?userId=${userId}`);
     return handleResponse<UserProfile>(response);
   },
+
+  getAllUsers: async (): Promise<UserProfile[]> => {
+    const response = await fetch(`${API_BASE_URL}/users`);
+    return handleResponse<UserProfile[]>(response);
+  },
+
+  getApprovedUsers: async (): Promise<UserProfile[]> => {
+    const response = await fetch(`${API_BASE_URL}/users/approved`);
+    return handleResponse<UserProfile[]>(response);
+  },
 };
