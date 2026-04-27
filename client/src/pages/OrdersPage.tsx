@@ -16,7 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Search, Loader2, Trash2, AlertTriangle, X, Package, User, MapPin, Phone, Calendar, CreditCard, FileText, FileSpreadsheet, Download } from 'lucide-react';
 import { orderApi } from '@/services/orderApi';
 import { useToast } from '@/hooks/use-toast';
 import type { Order } from '@/types/order';
@@ -32,6 +38,8 @@ export default function OrdersPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -98,9 +106,15 @@ export default function OrdersPage() {
     setSelectedOrders(newSelected);
   };
 
-  const handleDeleteClick = (orderId: string) => {
+  const handleDeleteClick = (orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setOrderToDelete(orderId);
     setDeleteDialogOpen(true);
+  };
+
+  const handleOrderClick = (order: Order) => {
+    setSelectedOrder(order);
+    setOrderDetailsOpen(true);
   };
 
   const handleBulkDeleteClick = () => {
@@ -159,6 +173,141 @@ export default function OrdersPage() {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  };
+
+  const downloadOrderExcel = (order: Order) => {
+    const formatExcelDate = (dateString?: string) => {
+      if (!dateString) return '-';
+      return new Date(dateString).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    };
+
+    const today = new Date().toLocaleDateString('en-GB');
+
+    const styles = `
+      <style>
+        table { border-collapse: collapse; width: 100%; font-family: Calibri, Arial, sans-serif; font-size: 11pt; }
+        th { background-color: #F4B084; color: #000000; font-weight: bold; text-align: left; padding: 8px; border: 1px solid #D9D9D9; }
+        td { padding: 6px 8px; border: 1px solid #D9D9D9; text-align: left; }
+        tr:nth-child(even) { background-color: #FCE4D6; }
+        tr:nth-child(odd) { background-color: #FFFFFF; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .header-row { background-color: #F4B084 !important; }
+        .report-title { font-size: 16pt; font-weight: bold; margin-bottom: 5px; color: #C65911; }
+        .customer-info { background-color: #FFF2CC; padding: 10px; margin: 10px 0; border-left: 4px solid #F4B084; }
+        .amount-box { background-color: #E2EFDA; padding: 8px; text-align: center; font-weight: bold; }
+        .status-completed { color: #00B050; font-weight: bold; }
+        .status-pending { color: #FF0000; font-weight: bold; }
+        .status-cancelled { color: #FF0000; font-weight: bold; }
+        .price-highlight { color: #C65911; font-weight: bold; }
+      </style>
+    `;
+
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        ${styles}
+      </head>
+      <body>
+        <div class="report-title">Order Receipt - #${order._id.slice(-6)}</div>
+        <div style="font-size: 10pt; color: #666;">Generated on: ${today}</div>
+        
+        <div class="customer-info">
+          <table style="width: 100%; border: none;">
+            <tr>
+              <td style="border: none; width: 50%;"><b>Customer Name:</b> ${order.customerName}</td>
+              <td style="border: none; width: 50%;"><b>Phone:</b> ${order.customerPhone || '-'}</td>
+            </tr>
+            <tr>
+              <td style="border: none;" colspan="2"><b>Address:</b> ${order.customerAddress || '-'}</td>
+            </tr>
+          </table>
+        </div>
+
+        <table>
+          <thead>
+            <tr class="header-row">
+              <th>S.No</th>
+              <th>Product Name</th>
+              <th>Quantity</th>
+              <th>Unit</th>
+              <th>Unit Price (Rs.)</th>
+              <th>Total (Rs.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${order.items.map((item, index) => `
+              <tr>
+                <td class="text-center">${index + 1}</td>
+                <td>${item.productName}</td>
+                <td class="text-center">${item.quantity}</td>
+                <td class="text-center capitalize">${item.unitType}</td>
+                <td class="text-right">${item.unitPrice.toFixed(2)}</td>
+                <td class="text-right price-highlight">${item.total.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <table style="margin-top: 15px; width: 60%; margin-left: auto;">
+          <tr>
+            <td style="text-align: right; font-weight: bold;">Subtotal:</td>
+            <td style="text-align: right; font-weight: bold;">Rs. ${order.subtotal.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="text-align: right; font-weight: bold;">Tax (${order.taxRate}%):</td>
+            <td style="text-align: right;">Rs. ${order.tax.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="text-align: right; font-weight: bold;">Total Amount:</td>
+            <td style="text-align: right; font-weight: bold; color: #C65911;">Rs. ${order.total.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="text-align: right; font-weight: bold;">Payment Method:</td>
+            <td style="text-align: right; text-transform: capitalize;">${order.paymentMethod}</td>
+          </tr>
+          <tr>
+            <td style="text-align: right; font-weight: bold;">Order Status:</td>
+            <td style="text-align: right;" class="${order.status === 'completed' ? 'status-completed' : 'status-pending'}">${order.status}</td>
+          </tr>
+          <tr>
+            <td style="text-align: right; font-weight: bold;">Order Date:</td>
+            <td style="text-align: right;">${formatExcelDate(order.createdAt)}</td>
+          </tr>
+        </table>
+
+        ${order.notes ? `
+        <div style="margin-top: 20px; padding: 10px; background-color: #F2F2F2; border-left: 3px solid #C65911;">
+          <b>Notes:</b><br>
+          ${order.notes}
+        </div>
+        ` : ''}
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Order_${order._id.slice(-6)}_${order.customerName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xls`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: 'Success',
+      description: `Order #${order._id.slice(-6)} downloaded as Excel`,
     });
   };
 
@@ -240,7 +389,11 @@ export default function OrdersPage() {
                     </tr>
                   ) : (
                     filteredOrders.map((order) => (
-                      <tr key={order._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                      <tr 
+                        key={order._id} 
+                        className="border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => handleOrderClick(order)}
+                      >
                         <td className="py-3 px-4">
                           <Checkbox 
                             checked={selectedOrders.has(order._id)}
@@ -272,7 +425,7 @@ export default function OrdersPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => handleDeleteClick(order._id)}
+                            onClick={(e) => handleDeleteClick(order._id, e)}
                             disabled={isDeleting}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -323,6 +476,140 @@ export default function OrdersPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Order Details Dialog */}
+        <Dialog open={orderDetailsOpen} onOpenChange={setOrderDetailsOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <Package className="h-5 w-5 text-primary" />
+                Order Details
+              </DialogTitle>
+              {selectedOrder && (
+                <Button
+                  className="bg-[#217346] hover:bg-[#1a5c38] text-white border-0 shrink-0"
+                  onClick={() => downloadOrderExcel(selectedOrder)}
+                >
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  Download Excel
+                </Button>
+              )}
+            </DialogHeader>
+            
+            {selectedOrder && (
+              <div className="space-y-6">
+                {/* Order Header */}
+                <div className="flex items-center justify-between pb-4 border-b">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Order ID</p>
+                    <p className="font-mono font-medium">#{selectedOrder._id.slice(-6)}</p>
+                  </div>
+                  <Badge
+                    variant={selectedOrder.status === 'completed' ? 'default' : selectedOrder.status === 'pending' ? 'secondary' : 'destructive'}
+                    className="capitalize text-sm px-3 py-1"
+                  >
+                    {selectedOrder.status}
+                  </Badge>
+                </div>
+
+                {/* Customer Info */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <User className="h-4 w-4 text-primary" />
+                    Customer Information
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Name:</span>
+                      <span className="font-medium">{selectedOrder.customerName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">Phone:</span>
+                      <span className="font-medium">{selectedOrder.customerPhone || '-'}</span>
+                    </div>
+                    <div className="flex items-start gap-2 sm:col-span-2">
+                      <MapPin className="h-3 w-3 text-muted-foreground mt-0.5" />
+                      <span className="text-muted-foreground">Address:</span>
+                      <span className="font-medium">{selectedOrder.customerAddress || '-'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Info */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Order Information
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">Date:</span>
+                      <span className="font-medium">{formatDate(selectedOrder.createdAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">Payment:</span>
+                      <span className="font-medium capitalize">{selectedOrder.paymentMethod}</span>
+                    </div>
+                    {selectedOrder.notes && (
+                      <div className="sm:col-span-2 p-3 bg-muted/50 rounded-lg">
+                        <span className="text-muted-foreground text-xs">Notes:</span>
+                        <p className="text-sm mt-1">{selectedOrder.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Order Items ({selectedOrder.items.length})</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-medium">Product</th>
+                          <th className="text-center py-2 px-3 font-medium">Qty</th>
+                          <th className="text-center py-2 px-3 font-medium">Unit</th>
+                          <th className="text-right py-2 px-3 font-medium">Price</th>
+                          <th className="text-right py-2 px-3 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedOrder.items.map((item, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="py-2 px-3">{item.productName}</td>
+                            <td className="py-2 px-3 text-center">{item.quantity}</td>
+                            <td className="py-2 px-3 text-center capitalize">{item.unitType}</td>
+                            <td className="py-2 px-3 text-right">Rs. {item.unitPrice.toFixed(2)}</td>
+                            <td className="py-2 px-3 text-right font-medium">Rs. {item.total.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div className="border-t pt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal:</span>
+                    <span>Rs. {selectedOrder.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax ({selectedOrder.taxRate}%):</span>
+                    <span>Rs. {selectedOrder.tax.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                    <span>Total:</span>
+                    <span className="text-primary">Rs. {selectedOrder.total.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );

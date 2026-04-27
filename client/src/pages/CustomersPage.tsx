@@ -84,8 +84,8 @@ export default function CustomersPage() {
     // Search filter
     const matchesSearch =
       customer.customerName.toLowerCase().includes(search.toLowerCase()) ||
-      customer.customerPhone.includes(search) ||
-      customer.customerCNIC.includes(search) ||
+      customer.customerPhone?.includes(search) ||
+      customer.customerCNIC?.includes(search) ||
       customer.customerAddress?.toLowerCase().includes(search.toLowerCase());
 
     // Status filter
