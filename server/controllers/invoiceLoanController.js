@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const InvoiceLoan = require('../models/InvoiceLoan');
 const Order = require('../models/Order');
 
@@ -289,6 +290,145 @@ exports.deleteInvoiceLoan = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting invoice loan',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get unique customers from invoice loans
+// @route   GET /api/invoice-loans/customers
+// @access  Private
+exports.getUniqueCustomers = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    
+    const matchFilter = {};
+    if (userId) {
+      matchFilter.userId = new mongoose.Types.ObjectId(userId);
+    }
+
+    // Aggregate to get unique customers with their loan stats
+    // Group by CNIC if available, otherwise by name+phone combo (for walk-in customers)
+    // Get loan customers from InvoiceLoan
+    const loanCustomers = await InvoiceLoan.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: {
+            $cond: {
+              if: {
+                $and: [
+                  { $ne: [{ $ifNull: ['$customerCNIC', ''] }, ''] },
+                  { $ne: [{ $ifNull: ['$customerCNIC', ''] }, '-'] },
+                  { $gte: [{ $strLenCP: { $ifNull: ['$customerCNIC', ''] } }, 10] }
+                ]
+              },
+              then: '$customerCNIC',
+              else: { $concat: ['$customerName', '_', { $ifNull: ['$customerPhone', ''] }] }
+            }
+          },
+          customerName: { $first: '$customerName' },
+          customerPhone: { $first: '$customerPhone' },
+          customerCNIC: { $first: '$customerCNIC' },
+          customerAddress: { $first: '$customerAddress' },
+          totalLoans: { $sum: 1 },
+          totalAmount: { $sum: '$totalAmount' },
+          totalPaid: { $sum: '$amountPaid' },
+          totalRemaining: { $sum: '$remainingAmount' },
+          firstLoanDate: { $min: '$createdAt' },
+          lastLoanDate: { $max: '$createdAt' },
+          statusCounts: { $push: '$status' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          customerName: 1,
+          customerPhone: 1,
+          customerCNIC: 1,
+          customerAddress: 1,
+          totalLoans: 1,
+          totalAmount: 1,
+          totalPaid: 1,
+          totalRemaining: 1,
+          firstLoanDate: 1,
+          lastLoanDate: 1,
+          type: { $literal: 'loan' },
+          pendingLoans: { $size: { $filter: { input: '$statusCounts', as: 'status', cond: { $eq: ['$$status', 'Pending'] } } } },
+          partialLoans: { $size: { $filter: { input: '$statusCounts', as: 'status', cond: { $eq: ['$$status', 'Partial'] } } } },
+          paidLoans: { $size: { $filter: { input: '$statusCounts', as: 'status', cond: { $eq: ['$$status', 'Paid'] } } } }
+        }
+      }
+    ]);
+
+    // Get walk-in shopping customers from Orders (who don't have loans)
+    const orderMatchFilter = {};
+    if (userId) {
+      orderMatchFilter.userId = new mongoose.Types.ObjectId(userId);
+    }
+    
+    const shoppingCustomers = await Order.aggregate([
+      { $match: orderMatchFilter },
+      {
+        $group: {
+          _id: { $concat: ['$customerName', '_', { $ifNull: ['$customerPhone', ''] }] },
+          customerName: { $first: '$customerName' },
+          customerPhone: { $first: '$customerPhone' },
+          customerAddress: { $first: '$customerAddress' },
+          totalOrders: { $sum: 1 },
+          totalSpent: { $sum: '$total' },
+          firstOrderDate: { $min: '$createdAt' },
+          lastOrderDate: { $max: '$createdAt' }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          customerName: 1,
+          customerPhone: 1,
+          customerCNIC: { $literal: '' },
+          customerAddress: 1,
+          totalLoans: { $literal: 0 },
+          totalAmount: { $literal: 0 },
+          totalPaid: { $literal: 0 },
+          totalRemaining: { $literal: 0 },
+          firstLoanDate: null,
+          lastLoanDate: '$lastOrderDate',
+          type: { $literal: 'shopping' },
+          totalOrders: 1,
+          totalSpent: 1,
+          firstOrderDate: 1,
+          pendingLoans: { $literal: 0 },
+          partialLoans: { $literal: 0 },
+          paidLoans: { $literal: 0 }
+        }
+      }
+    ]);
+
+    // Filter out shopping customers that already exist in loan customers (by name+phone match)
+    const loanCustomerKeys = new Set(loanCustomers.map(c => `${c.customerName}_${c.customerPhone}`));
+    const uniqueShoppingCustomers = shoppingCustomers.filter(c => !loanCustomerKeys.has(`${c.customerName}_${c.customerPhone}`));
+
+    // Combine both customer types
+    const allCustomers = [...loanCustomers, ...uniqueShoppingCustomers];
+    
+    // Sort by last activity date (loan date or order date)
+    allCustomers.sort((a, b) => {
+      const dateA = new Date(a.lastLoanDate || a.lastOrderDate || 0);
+      const dateB = new Date(b.lastLoanDate || b.lastOrderDate || 0);
+      return dateB - dateA;
+    });
+
+    res.status(200).json({
+      success: true,
+      count: allCustomers.length,
+      data: allCustomers
+    });
+  } catch (error) {
+    console.error('Error fetching unique customers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching customers',
       error: error.message
     });
   }
