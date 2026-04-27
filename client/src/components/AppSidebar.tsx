@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useStore } from '@/store/useStore';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Package,
@@ -7,7 +8,7 @@ import {
   Users,
   FileText,
   Settings,
-  ChevronLeft,
+  ChevronRight,
   Store,
   Wallet,
 } from 'lucide-react';
@@ -24,15 +25,21 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const { sidebarOpen, toggleSidebar } = useStore();
+  const { sidebarOpen, setSidebarOpen } = useStore();
   const location = useLocation();
+  const [isHovered, setIsHovered] = useState(false);
+  
+  // Use hover state to control sidebar, fallback to store state
+  const isExpanded = isHovered || sidebarOpen;
 
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 flex flex-col',
-        sidebarOpen ? 'w-64' : 'w-[70px]'
+        'fixed left-0 top-0 z-40 h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out flex flex-col group',
+        isExpanded ? 'w-64' : 'w-[70px]'
       )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Logo */}
       <div className={cn(
@@ -42,28 +49,34 @@ export function AppSidebar() {
         {/* Logo Row */}
         <div className={cn(
           'flex items-center',
-          sidebarOpen ? 'justify-between h-full' : 'flex-col gap-2'
+          isExpanded ? 'justify-between h-full' : 'flex-col gap-2'
         )}>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-md shadow-primary/30">
               <Store className="h-5 w-5 text-primary-foreground" />
             </div>
-            {sidebarOpen && (
-              <span className="text-lg font-semibold tracking-tight">ShopFlow</span>
+            {isExpanded && (
+              <span className="text-lg font-semibold tracking-tight whitespace-nowrap overflow-hidden">ShopFlow</span>
             )}
           </div>
 
-          {/* Toggle Button */}
+          {/* Pin/Unpin Toggle Button - shows on hover */}
           <button
-            onClick={toggleSidebar}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSidebarOpen(!sidebarOpen);
+            }}
             className={cn(
-              'flex items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-md shadow-primary/30 hover:bg-primary/90 hover:shadow-lg transition-all duration-200',
-              sidebarOpen ? 'h-8 w-8' : 'h-7 w-7'
+              'flex items-center justify-center rounded-lg bg-primary/80 text-primary-foreground hover:bg-primary hover:shadow-lg transition-all duration-200',
+              isExpanded ? 'h-7 w-7 opacity-100' : 'h-6 w-6 opacity-0 group-hover:opacity-100'
             )}
-            title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={sidebarOpen ? 'Unpin sidebar' : 'Pin sidebar open'}
           >
-            <ChevronLeft
-              className={cn('transition-transform duration-200', sidebarOpen ? 'h-4 w-4' : 'h-4 w-4 rotate-180')}
+            <ChevronRight
+              className={cn(
+                'transition-transform duration-200',
+                sidebarOpen ? 'h-3.5 w-3.5' : 'h-3.5 w-3.5 rotate-180'
+              )}
             />
           </button>
         </div>
@@ -83,17 +96,22 @@ export function AppSidebar() {
                   ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
                   : 'text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent'
               )}
+              title={!isExpanded ? item.label : undefined}
             >
               <item.icon className="h-5 w-5 shrink-0" />
-              {sidebarOpen && <span>{item.label}</span>}
+              {isExpanded && (
+                <span className="whitespace-nowrap overflow-hidden transition-all duration-300">
+                  {item.label}
+                </span>
+              )}
             </NavLink>
           );
         })}
       </nav>
 
       {/* Footer */}
-      {sidebarOpen && (
-        <div className="border-t border-sidebar-border p-4">
+      {isExpanded && (
+        <div className="border-t border-sidebar-border p-4 whitespace-nowrap overflow-hidden transition-all duration-300">
           <p className="text-xs text-sidebar-muted">© 2024 ShopFlow</p>
         </div>
       )}
