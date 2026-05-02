@@ -7,7 +7,7 @@ const invoiceLoanSchema = new mongoose.Schema({
     required: true
   },
   orderId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: [mongoose.Schema.Types.ObjectId],
     ref: 'Order',
     required: true
   },
@@ -56,6 +56,14 @@ const invoiceLoanSchema = new mongoose.Schema({
     total: {
       type: Number,
       required: true
+    },
+    addedBy: {
+      type: String,
+      default: null
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
     }
   }],
   totalAmount: {
@@ -100,6 +108,10 @@ const invoiceLoanSchema = new mongoose.Schema({
     },
     note: {
       type: String
+    },
+    addedBy: {
+      type: String,
+      default: null
     }
   }]
 }, { timestamps: true });

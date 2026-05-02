@@ -59,8 +59,9 @@ exports.getOrders = async (req, res) => {
     // Pagination
     const skip = (Number(page) - 1) * Number(limit);
 
-    // Execute query
+    // Execute query with populate for existing loan
     const orders = await Order.find(filter)
+      .populate('existingLoanId', 'customerName')
       .sort(sort)
       .skip(skip)
       .limit(Number(limit))
@@ -102,7 +103,8 @@ exports.getOrder = async (req, res) => {
       query.userId = userId;
     }
     
-    const order = await Order.findOne(query);
+    const order = await Order.findOne(query)
+      .populate('existingLoanId', 'customerName');
 
     if (!order) {
       return res.status(404).json({

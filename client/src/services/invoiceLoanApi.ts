@@ -17,6 +17,7 @@ class InvoiceLoanApiError extends Error {
 const handleResponse = async <T>(response: Response): Promise<T> => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    console.error('API Error:', errorData);
     throw new InvoiceLoanApiError(
       errorData.message || `HTTP error! status: ${response.status}`,
       response.status
@@ -31,12 +32,15 @@ export interface InvoiceLoanItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  addedBy?: string;
+  addedAt?: string;
 }
 
 export interface Payment {
   amount: number;
   date: string;
   note?: string;
+  addedBy?: string;
 }
 
 export interface InvoiceLoan {
@@ -159,6 +163,34 @@ export const invoiceLoanApi = {
     const userId = getUserId();
     const params = userId ? `?userId=${userId}` : '';
     const response = await fetch(`${API_BASE_URL}/invoice-loans/customers${params}`);
+    return handleResponse(response);
+  },
+
+  findExistingLoan: async (customerCNIC?: string, customerPhone?: string, customerName?: string): Promise<{ success: boolean; found: boolean; data?: InvoiceLoan }> => {
+    const userId = getUserId();
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (customerCNIC) params.append('customerCNIC', customerCNIC);
+    if (customerPhone) params.append('customerPhone', customerPhone);
+    if (customerName) params.append('customerName', customerName);
+    
+    const response = await fetch(`${API_BASE_URL}/invoice-loans/find-existing?${params.toString()}`);
+    return handleResponse(response);
+  },
+
+  addItemsToLoan: async (loanId: string, items: InvoiceLoanItem[], orderId?: string, addedBy?: string): Promise<{ success: boolean; data: InvoiceLoan }> => {
+    const userId = getUserId();
+    const dataWithUserId = userId 
+      ? { items, orderId, userId, addedBy } 
+      : { items, orderId, addedBy };
+    
+    const response = await fetch(`${API_BASE_URL}/invoice-loans/${loanId}/items`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(dataWithUserId),
+    });
     return handleResponse(response);
   },
 };

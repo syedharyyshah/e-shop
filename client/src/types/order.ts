@@ -24,6 +24,8 @@ export interface Order {
   status: 'pending' | 'completed' | 'cancelled';
   paymentMethod: 'cash' | 'card' | 'digital';
   notes: string | null;
+  existingLoanId?: string | { _id: string; customerName: string };
+  addedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
