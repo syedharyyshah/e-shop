@@ -17,7 +17,7 @@ import {
 import { Plus, Trash2, Printer, Save, Minus, ShoppingCart, X, Search, Package, ChevronLeft, CreditCard, Banknote, ArrowRight } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { orderApi } from '@/services/orderApi';
-import { invoiceLoanApi } from '@/services/invoiceLoanApi';
+import { invoiceLoanApi, type InvoiceLoan } from '@/services/invoiceLoanApi';
 import { userApi } from '@/services/userApi';
 import { useToast } from '@/hooks/use-toast';
 import '@/styles/invoice.css';
@@ -53,12 +53,18 @@ export default function InvoicePage() {
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [isQuantityDialogOpen, setIsQuantityDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isExistingLoanDialogOpen, setIsExistingLoanDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'loan'>('cash');
   const [dueDate, setDueDate] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [baseQty, setBaseQty] = useState(0);
   const [parentQty, setParentQty] = useState(0);
+  const [existingLoan, setExistingLoan] = useState<InvoiceLoan | null>(null);
+  const [pendingOrderData, setPendingOrderData] = useState<any>(null);
+  const [pendingLoanItems, setPendingLoanItems] = useState<any[]>([]);
+  const [addedByName, setAddedByName] = useState('');
+  const [addedByRelation, setAddedByRelation] = useState('');
 
   // Fetch user's shop name and products on component mount
   useEffect(() => {
@@ -323,30 +329,7 @@ export default function InvoicePage() {
 
     setIsSaving(true);
     try {
-      const orderData = {
-        customerName: customerName.trim() || 'Walk-in Customer',
-        customerAddress: customerAddress.trim() || '-',
-        customerPhone: customerPhone.trim() || '-',
-        items: items.map(item => {
-          const totalBaseUnits = getTotalBaseUnits(item);
-          const isMultiUnit = item.parentQuantity > 0;
-          return {
-            productId: item.productId,
-            quantity: isMultiUnit ? item.parentQuantity : item.baseQuantity,
-            unitType: isMultiUnit ? 'bulk' as const : 'single' as const,
-            price: isMultiUnit && item.unitsPerParent 
-              ? item.unitPrice * item.unitsPerParent 
-              : item.unitPrice,
-            total: item.total,
-          };
-        }),
-        paymentMethod: 'cash' as const,
-      };
-
-      const response = await orderApi.createOrder(orderData);
-      const orderId = response.data._id;
-      
-      // If payment method is loan, create invoice loan
+      // If payment method is loan, handle loan creation (with existing loan check)
       if (paymentMethod === 'loan') {
         // Loan requires all customer details including CNIC
         if (!customerName.trim()) {
@@ -424,8 +407,46 @@ export default function InvoicePage() {
           };
         });
 
+        // Prepare order data
+        const orderData = {
+          customerName: customerName.trim() || 'Walk-in Customer',
+          customerAddress: customerAddress.trim() || '-',
+          customerPhone: customerPhone.trim() || '-',
+          items: items.map(item => {
+            const totalBaseUnits = getTotalBaseUnits(item);
+            const isMultiUnit = item.parentQuantity > 0;
+            return {
+              productId: item.productId,
+              quantity: isMultiUnit ? item.parentQuantity : item.baseQuantity,
+              unitType: isMultiUnit ? 'bulk' as const : 'single' as const,
+              price: isMultiUnit && item.unitsPerParent 
+                ? item.unitPrice * item.unitsPerParent 
+                : item.unitPrice,
+              total: item.total,
+            };
+          }),
+          paymentMethod: 'cash' as const,
+        };
+
+        // Check for existing loan
+        const existing = await checkExistingLoan();
+        
+        if (existing) {
+          // Store pending data and show dialog
+          setExistingLoan(existing);
+          setPendingOrderData(orderData);
+          setPendingLoanItems(loanItems);
+          setIsExistingLoanDialogOpen(true);
+          setIsSaving(false);
+          return;
+        }
+
+        // No existing loan - create new one
+        const orderResponse = await orderApi.createOrder(orderData);
+        const newOrderId = orderResponse.data._id;
+
         const loanData = {
-          orderId: orderId,
+          orderId: newOrderId,
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
           customerCNIC: customerCnic.trim(),
@@ -440,18 +461,40 @@ export default function InvoicePage() {
         
         toast({
           title: 'Success',
-          description: 'Order saved with loan successfully!',
+          description: 'Order saved with new loan successfully!',
         });
 
         // Refresh products to get updated stock
         await refreshProducts();
 
         // Reset form
-        // Refresh page after short delay to show fresh invoice
         setTimeout(() => {
           window.location.reload();
         }, 1500);
       } else {
+        // Cash payment - just create order
+        const orderData = {
+          customerName: customerName.trim() || 'Walk-in Customer',
+          customerAddress: customerAddress.trim() || '-',
+          customerPhone: customerPhone.trim() || '-',
+          items: items.map(item => {
+            const totalBaseUnits = getTotalBaseUnits(item);
+            const isMultiUnit = item.parentQuantity > 0;
+            return {
+              productId: item.productId,
+              quantity: isMultiUnit ? item.parentQuantity : item.baseQuantity,
+              unitType: isMultiUnit ? 'bulk' as const : 'single' as const,
+              price: isMultiUnit && item.unitsPerParent 
+                ? item.unitPrice * item.unitsPerParent 
+                : item.unitPrice,
+              total: item.total,
+            };
+          }),
+          paymentMethod: 'cash' as const,
+        };
+
+        await orderApi.createOrder(orderData);
+
         toast({
           title: 'Success',
           description: 'Order saved successfully!',
@@ -488,6 +531,143 @@ export default function InvoicePage() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
+  };
+
+  // Check if customer has existing pending/partial loan
+  const checkExistingLoan = async (): Promise<InvoiceLoan | null> => {
+    try {
+      const cnic = customerCnic.trim();
+      const phone = customerPhone.trim();
+      const name = customerName.trim();
+      
+      // Only check if we have at least one identifier
+      if (!cnic && !phone && !name) return null;
+      
+      const response = await invoiceLoanApi.findExistingLoan(
+        cnic || undefined,
+        phone || undefined,
+        name || undefined
+      );
+      
+      if (response.found && response.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error checking existing loan:', error);
+      return null;
+    }
+  };
+
+  // Handle adding items to existing loan
+  const handleAddToExistingLoan = async () => {
+    if (!existingLoan || !pendingOrderData || pendingLoanItems.length === 0) return;
+    
+    setIsSaving(true);
+    setIsExistingLoanDialogOpen(false);
+    
+    try {
+      // First create the order
+      const orderResponse = await orderApi.createOrder(pendingOrderData);
+      const orderId = orderResponse.data._id;
+      
+      // Combine relation and name (e.g., "Brother Ali")
+      const fullAddedByName = addedByRelation && addedByName 
+        ? `${addedByRelation} ${addedByName}`
+        : addedByName || addedByRelation || undefined;
+      
+      // Add items to existing loan with addedBy name
+      await invoiceLoanApi.addItemsToLoan(existingLoan._id, pendingLoanItems, orderId, fullAddedByName);
+      
+      toast({
+        title: 'Success',
+        description: `Items added to existing loan of ${existingLoan.customerName} successfully!`,
+      });
+
+      // Refresh products to get updated stock
+      await refreshProducts();
+
+      // Reset form and refresh page
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error('Error adding to existing loan:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add items to existing loan',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+      setPendingOrderData(null);
+      setPendingLoanItems([]);
+      setExistingLoan(null);
+      setAddedByName('');
+      setAddedByRelation('');
+    }
+  };
+
+  // Handle creating new loan (even if existing found)
+  const handleCreateNewLoan = async () => {
+    setIsExistingLoanDialogOpen(false);
+    setExistingLoan(null);
+    setAddedByName('');
+    setAddedByRelation('');
+    // Continue with normal loan creation
+    await proceedWithNewLoan();
+  };
+
+  // Proceed with creating new loan
+  const proceedWithNewLoan = async () => {
+    if (!pendingOrderData || pendingLoanItems.length === 0) return;
+    
+    setIsSaving(true);
+    
+    try {
+      // Create order
+      const orderResponse = await orderApi.createOrder(pendingOrderData);
+      const orderId = orderResponse.data._id;
+      
+      // Create new loan
+      const loanData = {
+        orderId: orderId,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerCNIC: customerCnic.trim(),
+        customerAddress: customerAddress.trim() || '-',
+        items: pendingLoanItems,
+        totalAmount: total,
+        dueDate: dueDate || undefined,
+        notes: 'Invoice loan created from order',
+      };
+
+      await invoiceLoanApi.createInvoiceLoan(loanData);
+      
+      toast({
+        title: 'Success',
+        description: 'New loan created successfully!',
+      });
+
+      // Refresh products to get updated stock
+      await refreshProducts();
+
+      // Reset form
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error('Error creating new loan:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to create loan',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+      setPendingOrderData(null);
+      setPendingLoanItems([]);
+    }
   };
 
   const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
@@ -1353,6 +1533,145 @@ export default function InvoicePage() {
                 <>
                   {paymentMethod === 'loan' ? 'Create Loan Order' : 'Confirm Cash Payment'}
                   <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Existing Loan Found Dialog */}
+      <Dialog open={isExistingLoanDialogOpen} onOpenChange={setIsExistingLoanDialogOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-lg mx-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <CreditCard className="h-5 w-5" />
+              Existing Loan Found
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {existingLoan && (
+              <>
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                  <p className="text-sm text-amber-800">
+                    <strong>{existingLoan.customerName}</strong> already has a pending loan:
+                  </p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Current Balance:</span>
+                      <span className="font-bold">Rs. {existingLoan.remainingAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Items:</span>
+                      <span>{existingLoan.items.length} products</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Status:</span>
+                      <Badge variant={existingLoan.status === 'Pending' ? 'destructive' : 'default'}>
+                        {existingLoan.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    New items to add:
+                  </p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">New Items:</span>
+                      <span>{items.length} products</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">New Amount:</span>
+                      <span className="font-bold">Rs. {total.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2 border-t border-blue-200">
+                      <span className="text-muted-foreground">Combined Total:</span>
+                      <span className="font-bold text-lg">Rs. {(existingLoan.remainingAmount + total).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">
+                    Items being added by (Optional):
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={addedByRelation}
+                      onChange={(e) => setAddedByRelation(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md text-sm bg-white"
+                    >
+                      <option value="">Select Relation</option>
+                      <option value="Brother">Brother</option>
+                      <option value="Sister">Sister</option>
+                      <option value="Father">Father</option>
+                      <option value="Mother">Mother</option>
+                      <option value="Son">Son</option>
+                      <option value="Daughter">Daughter</option>
+                      <option value="Wife">Wife</option>
+                      <option value="Husband">Husband</option>
+                      <option value="Uncle">Uncle</option>
+                      <option value="Aunt">Aunt</option>
+                      <option value="Cousin">Cousin</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <Input
+                      placeholder="Name (e.g., Ali, Sara)"
+                      value={addedByName}
+                      onChange={(e) => setAddedByName(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter who is purchasing on behalf of {existingLoan?.customerName}
+                  </p>
+                </div>
+
+                <p className="text-sm text-muted-foreground text-center">
+                  Would you like to add these new items to the existing loan or create a new separate loan?
+                </p>
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsExistingLoanDialogOpen(false);
+                setAddedByName('');
+                setAddedByRelation('');
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="secondary"
+              onClick={handleCreateNewLoan}
+              disabled={isSaving}
+              className="w-full sm:w-auto"
+            >
+              Create New Loan
+            </Button>
+            <Button 
+              onClick={handleAddToExistingLoan}
+              disabled={isSaving}
+              className="w-full sm:w-auto bg-amber-600 hover:bg-amber-700"
+            >
+              {isSaving ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Adding...
+                </>
+              ) : (
+                <>
+                  Add to Existing Loan
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </>
               )}
             </Button>

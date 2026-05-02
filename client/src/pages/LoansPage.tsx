@@ -200,6 +200,8 @@ export default function LoansPage() {
               <th>Quantity</th>
               <th>Unit Price (Rs.)</th>
               <th>Total (Rs.)</th>
+              <th>Added By</th>
+              <th>Date/Time</th>
             </tr>
           </thead>
           <tbody>
@@ -209,6 +211,11 @@ export default function LoansPage() {
                 <td class="text-center">${item.quantity}</td>
                 <td class="text-right">${item.unitPrice.toFixed(2)}</td>
                 <td class="text-right" style="font-weight: bold;">${item.total.toFixed(2)}</td>
+                <td style="color: #0070C0;">${item.addedBy || '-'}</td>
+                <td>${item.addedAt ? new Date(item.addedAt).toLocaleString('en-GB', {
+                  day: '2-digit', month: '2-digit', year: 'numeric',
+                  hour: '2-digit', minute: '2-digit', hour12: true
+                }) : '-'}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -952,6 +959,8 @@ export default function LoansPage() {
                       <th className="text-center py-2 px-3 font-medium">Qty</th>
                       <th className="text-right py-2 px-3 font-medium">Unit Price</th>
                       <th className="text-right py-2 px-3 font-medium">Total</th>
+                      <th className="text-left py-2 px-3 font-medium">Added By</th>
+                      <th className="text-left py-2 px-3 font-medium">Date/Time</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -961,6 +970,24 @@ export default function LoansPage() {
                         <td className="py-2 px-3 text-center">{item.quantity}</td>
                         <td className="py-2 px-3 text-right">Rs. {item.unitPrice.toFixed(2)}</td>
                         <td className="py-2 px-3 text-right font-medium">Rs. {item.total.toFixed(2)}</td>
+                        <td className="py-2 px-3 text-xs">
+                          {item.addedBy ? (
+                            <span className="text-blue-600 font-medium">{item.addedBy}</span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-xs text-gray-500">
+                          {item.addedAt ? new Date(item.addedAt).toLocaleString('en-PK', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

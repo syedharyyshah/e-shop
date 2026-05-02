@@ -291,6 +291,20 @@ export default function OrdersPage() {
           ${order.notes}
         </div>
         ` : ''}
+
+        ${order.existingLoanId ? `
+        <div style="margin-top: 20px; padding: 15px; background-color: #FFF8E1; border: 2px solid #FF8F00; border-radius: 5px;">
+          <div style="font-size: 12pt; font-weight: bold; color: #E65100; margin-bottom: 8px;">
+            ⚠️ Added to Existing Loan
+          </div>
+          <div style="font-size: 10pt; color: #333;">
+            <b>Original Borrower:</b> ${typeof order.existingLoanId === 'object' ? order.existingLoanId.customerName : 'N/A'}<br>
+            <b>Loan ID:</b> ${typeof order.existingLoanId === 'string' ? order.existingLoanId.slice(-6) : order.existingLoanId._id.slice(-6)}<br>
+            ${order.addedBy ? `<b>Items Added By:</b> ${order.addedBy}<br>` : ''}
+            <b>Status:</b> This order was added to an existing customer's loan
+          </div>
+        </div>
+        ` : ''}
       </body>
       </html>
     `;
@@ -401,7 +415,16 @@ export default function OrdersPage() {
                             aria-label={`Select order ${order._id.slice(-6)}`}
                           />
                         </td>
-                        <td className="py-3 px-4 font-medium">#{order._id.slice(-6)}</td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">#{order._id.slice(-6)}</span>
+                            {order.existingLoanId && (
+                              <Badge variant="outline" className="text-amber-600 border-amber-600 text-xs">
+                                Existing Loan
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3 px-4">
                           <div>
                             <p className="font-medium">{order.customerName}</p>
@@ -561,6 +584,40 @@ export default function OrdersPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Existing Loan Info */}
+                {selectedOrder.existingLoanId && (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold flex items-center gap-2 text-amber-600">
+                      <CreditCard className="h-4 w-4" />
+                      Existing Loan Details
+                    </h3>
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800 mb-2">
+                        <strong>This order was added to an existing loan</strong>
+                      </p>
+                      <p className="text-sm text-amber-700 mb-1">
+                        <span className="text-muted-foreground">Original Borrower:</span>{' '}
+                        <span className="font-medium">
+                          {typeof selectedOrder.existingLoanId === 'object' 
+                            ? selectedOrder.existingLoanId.customerName
+                            : 'N/A'}
+                        </span>
+                      </p>
+                      {selectedOrder.addedBy && (
+                        <p className="text-sm text-amber-700">
+                          <span className="text-muted-foreground">Items added by:</span>{' '}
+                          <span className="font-medium">{selectedOrder.addedBy}</span>
+                        </p>
+                      )}
+                      <p className="text-xs text-amber-600 mt-2">
+                        Loan ID: {typeof selectedOrder.existingLoanId === 'string' 
+                          ? selectedOrder.existingLoanId.slice(-6)
+                          : selectedOrder.existingLoanId._id.slice(-6)}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Items Table */}
                 <div className="space-y-3">

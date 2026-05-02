@@ -8,12 +8,17 @@ const {
   updateInvoiceLoan,
   deleteInvoiceLoan,
   getInvoiceLoanStats,
-  getUniqueCustomers
+  getUniqueCustomers,
+  addItemsToLoan,
+  findExistingLoan
 } = require('../controllers/invoiceLoanController');
 
 router.route('/')
   .get(getInvoiceLoans)
   .post(createInvoiceLoan);
+
+router.route('/find-existing')
+  .get(findExistingLoan);
 
 router.route('/customers')
   .get(getUniqueCustomers);
@@ -28,5 +33,8 @@ router.route('/:id')
 
 router.route('/:id/payment')
   .put(addPayment);
+
+router.route('/:id/items')
+  .put(addItemsToLoan);
 
 module.exports = router;

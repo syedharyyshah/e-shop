@@ -106,10 +106,10 @@ exports.createInvoiceLoan = async (req, res) => {
       });
     }
 
-    // Create invoice loan
+    // Create invoice loan - wrap orderId in array
     const loan = await InvoiceLoan.create({
       userId,
-      orderId,
+      orderId: Array.isArray(orderId) ? orderId : [orderId],
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
       customerCNIC: customerCNIC.trim(),
@@ -208,6 +208,164 @@ exports.addPayment = async (req, res) => {
     res.status(400).json({
       success: false,
       message: 'Error adding payment',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Add items to existing invoice loan
+// @route   PUT /api/invoice-loans/:id/items
+// @access  Private
+exports.addItemsToLoan = async (req, res) => {
+  try {
+    const { userId, items, orderId, addedBy } = req.body;
+    
+    if (!items || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Items are required'
+      });
+    }
+
+    const query = { _id: req.params.id };
+    if (userId) {
+      query.userId = userId;
+    }
+
+    // Use lean() to get plain object and bypass Mongoose schema casting
+    const loan = await InvoiceLoan.findOne(query).lean();
+    
+    if (!loan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice loan not found'
+      });
+    }
+
+    if (loan.status === 'Paid') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot add items to a fully paid loan'
+      });
+    }
+
+    // Calculate total for new items
+    const newItemsTotal = items.reduce((sum, item) => sum + item.total, 0);
+
+    // Add addedBy and addedAt to new items
+    const itemsWithMetadata = items.map(item => ({
+      ...item,
+      addedBy: addedBy || null,
+      addedAt: new Date()
+    }));
+
+    // Prepare update data
+    const updateData = {
+      items: [...loan.items, ...itemsWithMetadata],
+      totalAmount: loan.totalAmount + newItemsTotal,
+      remainingAmount: loan.remainingAmount + newItemsTotal
+    };
+    
+    // Handle orderId - convert to array if needed and add new order
+    if (orderId) {
+      const newOrderIdStr = orderId.toString();
+      let currentOrderIds = loan.orderId;
+      
+      // Convert existing orderId to array if it's not already
+      if (!Array.isArray(currentOrderIds)) {
+        currentOrderIds = [currentOrderIds];
+      }
+      
+      // Check if new order is not already included
+      const existingOrderIds = currentOrderIds.map(id => id.toString());
+      if (!existingOrderIds.includes(newOrderIdStr)) {
+        currentOrderIds.push(orderId);
+      }
+      
+      updateData.orderId = currentOrderIds;
+    }
+
+    // Use findOneAndUpdate to bypass schema validation issues with existing data
+    const updatedLoan = await InvoiceLoan.findOneAndUpdate(
+      query,
+      { $set: updateData },
+      { new: true }
+    );
+
+    // Update order to mark it as added to existing loan
+    if (orderId) {
+      await Order.findByIdAndUpdate(orderId, {
+        existingLoanId: req.params.id,
+        addedBy: addedBy || null
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Items added to loan successfully',
+      data: updatedLoan
+    });
+  } catch (error) {
+    console.error('Error adding items to loan:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Request body:', req.body);
+    console.error('Request params:', req.params);
+    res.status(400).json({
+      success: false,
+      message: 'Error adding items to loan',
+      error: error.message,
+      stack: error.stack
+    });
+  }
+};
+
+// @desc    Find existing pending/partial loan by customer CNIC or Phone
+// @route   GET /api/invoice-loans/find-existing
+// @access  Private
+exports.findExistingLoan = async (req, res) => {
+  try {
+    const { userId, customerCNIC, customerPhone, customerName } = req.query;
+    
+    const query = { 
+      status: { $in: ['Pending', 'Partial'] }
+    };
+    
+    if (userId) {
+      query.userId = userId;
+    }
+
+    // Search by CNIC if provided and valid
+    if (customerCNIC && customerCNIC.trim().length >= 10) {
+      query.customerCNIC = customerCNIC.trim();
+    } 
+    // Otherwise search by phone if provided
+    else if (customerPhone && customerPhone.trim()) {
+      query.customerPhone = customerPhone.trim();
+    }
+    // Otherwise search by name
+    else if (customerName && customerName.trim()) {
+      query.customerName = { $regex: customerName.trim(), $options: 'i' };
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide customerCNIC, customerPhone, or customerName'
+      });
+    }
+
+    const loan = await InvoiceLoan.findOne(query)
+      .sort({ createdAt: -1 }) // Get most recent
+      .populate('items.productId');
+
+    res.status(200).json({
+      success: true,
+      found: !!loan,
+      data: loan
+    });
+  } catch (error) {
+    console.error('Error finding existing loan:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error finding existing loan',
       error: error.message
     });
   }

@@ -112,6 +112,16 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     maxlength: [1000, 'Notes cannot exceed 1000 characters'],
     default: null
+  },
+  // Existing Loan Reference (if order was added to an existing loan)
+  existingLoanId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'InvoiceLoan',
+    default: null
+  },
+  addedBy: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
