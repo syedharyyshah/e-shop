@@ -6,6 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,10 +30,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, Loader2, Trash2, AlertTriangle, X, Package, User, MapPin, Phone, Calendar, CreditCard, FileText, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Loader2, Trash2, AlertTriangle, X, Package, User, MapPin, Phone, Calendar, CreditCard, FileText, FileSpreadsheet, Download, RotateCcw, Undo2, Eye, Printer } from 'lucide-react';
 import { orderApi } from '@/services/orderApi';
+import { returnApi } from '@/services/returnApi';
 import { useToast } from '@/hooks/use-toast';
-import type { Order } from '@/types/order';
+import type { Order, OrderItem } from '@/types/order';
+import type { Return, ReturnItem } from '@/types/return';
 
 export default function OrdersPage() {
   const { toast } = useToast();
@@ -40,6 +50,18 @@ export default function OrdersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+
+  // Return-related state
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [returnItems, setReturnItems] = useState<{ orderItem: OrderItem; returnQuantity: number; returnReason: string }[]>([]);
+  const [returnType, setReturnType] = useState<'partial' | 'full'>('partial');
+  const [refundMethod, setRefundMethod] = useState<'cash' | 'original_payment' | 'store_credit'>('cash');
+  const [returnNotes, setReturnNotes] = useState('');
+  const [isProcessingReturn, setIsProcessingReturn] = useState(false);
+  const [orderReturns, setOrderReturns] = useState<Return[]>([]);
+  const [returnsLoading, setReturnsLoading] = useState(false);
+  const [returnsHistoryOpen, setReturnsHistoryOpen] = useState(false);
+  const [invoiceViewOpen, setInvoiceViewOpen] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -163,6 +185,142 @@ export default function OrdersPage() {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
       setOrderToDelete(null);
+    }
+  };
+
+  // Return handling functions
+  const handleReturnClick = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrder(order);
+    
+    // Initialize return items from order items
+    const initialReturnItems = order.items.map(item => ({
+      orderItem: item,
+      returnQuantity: 0,
+      returnReason: ''
+    }));
+    setReturnItems(initialReturnItems);
+    setReturnType('partial');
+    setRefundMethod('cash');
+    setReturnNotes('');
+    setReturnDialogOpen(true);
+  };
+
+  const handleFullReturnClick = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrder(order);
+    
+    // Initialize return items with full quantities
+    const initialReturnItems = order.items.map(item => ({
+      orderItem: item,
+      returnQuantity: item.quantity,
+      returnReason: 'Full order return'
+    }));
+    setReturnItems(initialReturnItems);
+    setReturnType('full');
+    setRefundMethod('cash');
+    setReturnNotes('');
+    setReturnDialogOpen(true);
+  };
+
+  const updateReturnQuantity = (index: number, quantity: number) => {
+    setReturnItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, returnQuantity: Math.max(0, Math.min(quantity, item.orderItem.quantity)) } : item
+    ));
+  };
+
+  const updateReturnReason = (index: number, reason: string) => {
+    setReturnItems(prev => prev.map((item, i) => 
+      i === index ? { ...item, returnReason: reason } : item
+    ));
+  };
+
+  const calculateReturnTotal = () => {
+    const subtotal = returnItems.reduce((sum, item) => {
+      return sum + (item.returnQuantity * item.orderItem.unitPrice);
+    }, 0);
+    const taxRate = selectedOrder?.taxRate || 10;
+    const tax = Math.round((subtotal * taxRate / 100) * 100) / 100;
+    const total = Math.round((subtotal + tax) * 100) / 100;
+    return { subtotal, tax, total };
+  };
+
+  const processReturn = async () => {
+    if (!selectedOrder) return;
+
+    // Filter out items with 0 return quantity
+    const itemsToReturn = returnItems.filter(item => item.returnQuantity > 0);
+    
+    if (itemsToReturn.length === 0) {
+      toast({
+        title: 'Error',
+        description: 'Please select at least one item to return',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsProcessingReturn(true);
+    try {
+      const returnData = {
+        orderId: selectedOrder._id,
+        items: itemsToReturn.map(item => ({
+          productId: item.orderItem.productId,
+          quantity: item.returnQuantity,
+          unitType: item.orderItem.unitType,
+          returnReason: item.returnReason
+        })),
+        returnType,
+        refundMethod,
+        notes: returnNotes,
+        processedBy: localStorage.getItem('userName') || 'System'
+      };
+
+      const response = await returnApi.createReturn(returnData);
+      
+      if (response.success) {
+        toast({
+          title: 'Success',
+          description: `Return processed successfully. Return Number: ${response.data.returnNumber}`
+        });
+        
+        // Refresh orders to get updated status
+        fetchOrders();
+        
+        // Close dialog
+        setReturnDialogOpen(false);
+        setSelectedOrder(null);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to process return',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsProcessingReturn(false);
+    }
+  };
+
+  const viewReturnsHistory = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOrder(order);
+    setReturnsHistoryOpen(true);
+    setReturnsLoading(true);
+    
+    try {
+      const response = await returnApi.getOrderReturns(order._id);
+      if (response.success) {
+        setOrderReturns(response.data);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to fetch returns history',
+        variant: 'destructive'
+      });
+    } finally {
+      setReturnsLoading(false);
     }
   };
 
@@ -436,23 +594,66 @@ export default function OrdersPage() {
                         <td className="py-3 px-4 font-medium">Rs. {order.total.toFixed(2)}</td>
                         <td className="py-3 px-4">
                           <Badge
-                            variant={order.status === 'completed' ? 'default' : order.status === 'pending' ? 'secondary' : 'destructive'}
-                            className="capitalize"
+                            variant={
+                              order.status === 'completed' ? 'default' : 
+                              order.status === 'pending' ? 'secondary' : 
+                              order.status === 'cancelled' ? 'destructive' :
+                              order.status === 'returned' ? 'destructive' :
+                              'outline'
+                            }
+                            className={`capitalize ${
+                              order.status === 'returned' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                              order.status === 'partially_returned' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : ''
+                            }`}
                           >
-                            {order.status}
+                            {order.status === 'partially_returned' ? 'Partially Returned' : order.status}
                           </Badge>
+                          {order.returnStatus !== 'none' && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {order.returnStatus === 'full' ? 'Fully Returned' : 'Partially Returned'}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">{formatDate(order.createdAt)}</td>
                         <td className="py-3 px-4 text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={(e) => handleDeleteClick(order._id, e)}
-                            disabled={isDeleting}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            {/* Return button - only show if not cancelled or fully returned */}
+                            {order.status !== 'cancelled' && order.status !== 'returned' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                onClick={(e) => handleReturnClick(order, e)}
+                                title="Return Items"
+                              >
+                                <Undo2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                            
+                            {/* View returns history - show if order has returns */}
+                            {order.returnStatus !== 'none' && order.returns && order.returns.length > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                onClick={(e) => viewReturnsHistory(order, e)}
+                                title="View Returns History"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                            
+                            {/* Delete button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => handleDeleteClick(order._id, e)}
+                              disabled={isDeleting}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -509,13 +710,23 @@ export default function OrdersPage() {
                 Order Details
               </DialogTitle>
               {selectedOrder && (
-                <Button
-                  className="bg-[#217346] hover:bg-[#1a5c38] text-white border-0 shrink-0"
-                  onClick={() => downloadOrderExcel(selectedOrder)}
-                >
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Download Excel
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => setInvoiceViewOpen(true)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    View Invoice
+                  </Button>
+                  <Button
+                    className="bg-[#217346] hover:bg-[#1a5c38] text-white border-0 shrink-0"
+                    onClick={() => downloadOrderExcel(selectedOrder)}
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Download Excel
+                  </Button>
+                </div>
               )}
             </DialogHeader>
             
@@ -527,12 +738,28 @@ export default function OrdersPage() {
                     <p className="text-sm text-muted-foreground">Order ID</p>
                     <p className="font-mono font-medium">#{selectedOrder._id.slice(-6)}</p>
                   </div>
-                  <Badge
-                    variant={selectedOrder.status === 'completed' ? 'default' : selectedOrder.status === 'pending' ? 'secondary' : 'destructive'}
-                    className="capitalize text-sm px-3 py-1"
-                  >
-                    {selectedOrder.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge
+                      variant={
+                        selectedOrder.status === 'completed' ? 'default' : 
+                        selectedOrder.status === 'pending' ? 'secondary' : 
+                        selectedOrder.status === 'cancelled' ? 'destructive' :
+                        selectedOrder.status === 'returned' ? 'destructive' :
+                        'outline'
+                      }
+                      className={`capitalize text-sm px-3 py-1 ${
+                        selectedOrder.status === 'returned' ? 'bg-orange-100 text-orange-700 border-orange-300' :
+                        selectedOrder.status === 'partially_returned' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : ''
+                      }`}
+                    >
+                      {selectedOrder.status === 'partially_returned' ? 'Partially Returned' : selectedOrder.status}
+                    </Badge>
+                    {selectedOrder.returnStatus !== 'none' && (
+                      <span className="text-xs text-muted-foreground">
+                        {selectedOrder.returnStatus === 'full' ? 'Fully Returned' : 'Partially Returned'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Customer Info */}
@@ -566,6 +793,10 @@ export default function OrdersPage() {
                     Order Information
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">Order ID:</span>
+                      <span className="font-medium font-mono">#{selectedOrder._id.slice(-6)}</span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className="text-muted-foreground">Date:</span>
@@ -665,6 +896,394 @@ export default function OrdersPage() {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Return Dialog */}
+        <Dialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <RotateCcw className="h-5 w-5 text-orange-600" />
+                Process Return - Order #{selectedOrder?._id.slice(-6)}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedOrder && (
+              <div className="space-y-6">
+                {/* Order ID & Customer Info */}
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Order ID</p>
+                      <p className="text-lg font-bold text-primary">#{selectedOrder._id.slice(-6)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Date</p>
+                      <p className="text-sm">{formatDate(selectedOrder.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Customer:</span>{' '}
+                      <span className="font-medium">{selectedOrder.customerName}</span>
+                    </p>
+                    <p className="text-sm">
+                      <span className="text-muted-foreground">Original Total:</span>{' '}
+                      <span className="font-medium">Rs. {selectedOrder.total.toFixed(2)}</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Return Type Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Return Type</label>
+                  <Select value={returnType} onValueChange={(value: 'partial' | 'full') => setReturnType(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="partial">Partial Return (Selected Items)</SelectItem>
+                      <SelectItem value="full">Full Return (All Items)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Items to Return */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold">Select Items to Return</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left py-2 px-3 font-medium">Product</th>
+                          <th className="text-center py-2 px-3 font-medium">Purchased</th>
+                          <th className="text-center py-2 px-3 font-medium">Return Qty</th>
+                          <th className="text-right py-2 px-3 font-medium">Price</th>
+                          <th className="text-right py-2 px-3 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {returnItems.map((item, index) => (
+                          <tr key={index} className="border-t">
+                            <td className="py-2 px-3">
+                              <div>
+                                <p className="font-medium">{item.orderItem.productName}</p>
+                                <Input
+                                  type="text"
+                                  placeholder="Return reason (optional)"
+                                  value={item.returnReason}
+                                  onChange={(e) => updateReturnReason(index, e.target.value)}
+                                  className="mt-1 text-xs h-7"
+                                />
+                              </div>
+                            </td>
+                            <td className="py-2 px-3 text-center">{item.orderItem.quantity}</td>
+                            <td className="py-2 px-3 text-center">
+                              <Input
+                                type="number"
+                                min={0}
+                                max={item.orderItem.quantity}
+                                value={item.returnQuantity}
+                                onChange={(e) => updateReturnQuantity(index, parseInt(e.target.value) || 0)}
+                                className="w-20 mx-auto text-center h-8"
+                              />
+                            </td>
+                            <td className="py-2 px-3 text-right">Rs. {item.orderItem.unitPrice.toFixed(2)}</td>
+                            <td className="py-2 px-3 text-right font-medium">
+                              Rs. {(item.returnQuantity * item.orderItem.unitPrice).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Refund Method */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Refund Method</label>
+                  <Select value={refundMethod} onValueChange={(value: 'cash' | 'original_payment' | 'store_credit') => setRefundMethod(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash Refund</SelectItem>
+                      <SelectItem value="original_payment">Original Payment Method</SelectItem>
+                      <SelectItem value="store_credit">Store Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Return Notes (Optional)</label>
+                  <Textarea
+                    value={returnNotes}
+                    onChange={(e) => setReturnNotes(e.target.value)}
+                    placeholder="Add any additional notes about this return..."
+                    rows={3}
+                  />
+                </div>
+
+                {/* Return Summary */}
+                <div className="border-t pt-4 space-y-2 bg-orange-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-orange-800">Return Summary</h4>
+                  {(() => {
+                    const { subtotal, tax, total } = calculateReturnTotal();
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Subtotal:</span>
+                          <span>Rs. {subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Tax ({selectedOrder.taxRate}%):</span>
+                          <span>Rs. {tax.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold pt-2 border-t border-orange-200">
+                          <span>Refund Amount:</span>
+                          <span className="text-orange-700">Rs. {total.toFixed(2)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button variant="outline" onClick={() => setReturnDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={processReturn}
+                    disabled={isProcessingReturn || returnItems.every(i => i.returnQuantity === 0)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    {isProcessingReturn ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Process Return
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Returns History Dialog */}
+        <Dialog open={returnsHistoryOpen} onOpenChange={setReturnsHistoryOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <Eye className="h-5 w-5 text-blue-600" />
+                Returns History - Order #{selectedOrder?._id.slice(-6)}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedOrder && (
+              <div className="p-3 bg-primary/5 rounded-lg mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Order ID</p>
+                    <p className="text-lg font-bold text-primary">#{selectedOrder._id.slice(-6)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Customer</p>
+                    <p className="text-sm font-medium">{selectedOrder.customerName}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {returnsLoading ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                <p className="text-muted-foreground mt-2">Loading returns...</p>
+              </div>
+            ) : orderReturns.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No returns found for this order.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orderReturns.map((returnRecord) => (
+                  <div key={returnRecord._id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-lg">Return #{returnRecord.returnNumber}</p>
+                        <p className="text-sm text-muted-foreground">{formatDate(returnRecord.createdAt)}</p>
+                      </div>
+                      <Badge
+                        variant={returnRecord.returnType === 'full' ? 'destructive' : 'outline'}
+                        className={returnRecord.returnType === 'full' ? 'bg-orange-100 text-orange-700 border-orange-300' : 'bg-yellow-100 text-yellow-700 border-yellow-300'}
+                      >
+                        {returnRecord.returnType === 'full' ? 'Full Return' : 'Partial Return'}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Returned Items:</p>
+                      <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                        {returnRecord.items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span>{item.productName} x {item.quantity}</span>
+                            <span className="font-medium">Rs. {item.total.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Refund Method: </span>
+                        <span className="capitalize">{returnRecord.refundMethod.replace('_', ' ')}</span>
+                      </div>
+                      <div className="text-lg font-bold text-orange-700">
+                        Rs. {returnRecord.total.toFixed(2)}
+                      </div>
+                    </div>
+
+                    {returnRecord.notes && (
+                      <div className="text-sm bg-blue-50 p-2 rounded">
+                        <span className="text-muted-foreground">Notes: </span>
+                        {returnRecord.notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Total Refunded */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between text-xl font-bold">
+                    <span>Total Refunded:</span>
+                    <span className="text-orange-700">
+                      Rs. {orderReturns.reduce((sum, ret) => sum + ret.total, 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Invoice View Dialog */}
+        <Dialog open={invoiceViewOpen} onOpenChange={setInvoiceViewOpen}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                <FileText className="h-5 w-5 text-primary" />
+                Invoice - Order #{selectedOrder?._id.slice(-6)}
+              </DialogTitle>
+              <Button
+                variant="outline"
+                onClick={() => window.print()}
+                className="shrink-0"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print
+              </Button>
+            </DialogHeader>
+            
+            <div id="printable-invoice">
+              {selectedOrder ? (
+                <>
+                  {/* Simple Invoice - Same for screen and print */}
+                  <div className="space-y-6 p-4 border rounded-lg bg-white">
+                    {/* Invoice Header */}
+                    <div className="flex justify-between items-start border-b pb-4">
+                      <div>
+                        <h2 className="text-2xl font-bold text-primary">INVOICE</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Order ID: #{selectedOrder._id.slice(-6)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Date: {formatDate(selectedOrder.createdAt)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge
+                          variant={selectedOrder.status === 'completed' ? 'default' : 'outline'}
+                          className={`capitalize ${
+                            selectedOrder.status === 'returned' ? 'bg-orange-100 text-orange-700' :
+                            selectedOrder.status === 'partially_returned' ? 'bg-yellow-100 text-yellow-700' : ''
+                          }`}
+                        >
+                          {selectedOrder.status === 'partially_returned' ? 'Partially Returned' : selectedOrder.status}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Bill To */}
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-muted-foreground uppercase">Bill To</p>
+                      <p className="font-medium text-lg">{selectedOrder.customerName}</p>
+                      <p className="text-sm">{selectedOrder.customerAddress}</p>
+                      <p className="text-sm">{selectedOrder.customerPhone}</p>
+                    </div>
+
+                    {/* Items Table */}
+                    <table className="w-full text-sm">
+                      <thead className="border-b">
+                        <tr className="text-muted-foreground">
+                          <th className="text-left py-2 font-medium">Item</th>
+                          <th className="text-center py-2 font-medium">Qty</th>
+                          <th className="text-center py-2 font-medium">Unit</th>
+                          <th className="text-right py-2 font-medium">Price</th>
+                          <th className="text-right py-2 font-medium">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedOrder.items.map((item, index) => (
+                          <tr key={index} className="border-b last:border-0">
+                            <td className="py-3">{item.productName}</td>
+                            <td className="py-3 text-center">{item.quantity}</td>
+                            <td className="py-3 text-center capitalize">{item.unitType}</td>
+                            <td className="py-3 text-right">Rs. {item.unitPrice.toFixed(2)}</td>
+                            <td className="py-3 text-right font-medium">Rs. {item.total.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {/* Totals */}
+                    <div className="border-t pt-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span>Rs. {selectedOrder.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tax ({selectedOrder.taxRate}%):</span>
+                        <span>Rs. {selectedOrder.tax.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                        <span>Total:</span>
+                        <span className="text-primary">Rs. {selectedOrder.total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm pt-2">
+                        <span className="text-muted-foreground">Payment Method:</span>
+                        <span className="capitalize">{selectedOrder.paymentMethod}</span>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="text-center text-sm text-muted-foreground pt-4 border-t">
+                      <p>Thank you for your business!</p>
+                      <p className="mt-1">{selectedOrder.shopName}</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground">
+                  <p>No order selected. Please close and try again.</p>
+                </div>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
       </div>

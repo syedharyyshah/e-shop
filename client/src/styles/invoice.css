@@ -4,62 +4,75 @@
 @media print {
   @page {
     size: A4;
-    margin: 0;
+    margin: 10mm;
   }
 
-  body {
-    background: white;
-    margin: 0;
-    padding: 0;
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
-  .print-only {
-    display: block !important;
+  body, html {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100vh !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
-  .screen-only {
+  /* Hide everything in the navbar and sidebar */
+  nav, .navbar, [class*="Navbar"], [class*="sidebar"], [class*="Sidebar"] {
     display: none !important;
   }
 
-  /* Hide navbar and other UI elements */
-  nav,
-  .navbar,
-  [class*="Navbar"],
-  [class*="sidebar"],
-  [class*="Sidebar"],
-  [class*="app-sidebar"],
-  [class*="AppSidebar"],
-  header,
-  footer,
-  .fixed,
-  .sticky {
-    display: none !important;
-  }
-
-  /* Hide the form section */
-  .grid > div:first-child {
-    display: none !important;
-  }
-
-  /* Show only the invoice */
+  /* Reset padding for print container */
   .p-6 {
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    height: auto !important;
   }
 
-  .invoice-a4 {
-    box-shadow: none !important;
+  /* Hide the form grid - direct children of p-6 that are NOT invoice */
+  .p-6 > div.grid,
+  .p-6 > div[class*="grid"] {
+    display: none !important;
+  }
+
+  /* Show invoice and style it for A4 */
+  .invoice-a4.print-only {
+    display: block !important;
+    width: 190mm !important;
+    min-height: 277mm !important;
+    max-width: 190mm !important;
     margin: 0 auto !important;
-    padding: 20mm !important;
-    position: absolute !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    padding: 15mm !important;
+    background: white !important;
+    box-shadow: none !important;
+    position: relative !important;
+    left: auto !important;
+    transform: none !important;
+    page-break-after: avoid;
+  }
+
+  /* Ensure all invoice content is visible */
+  .invoice-a4.print-only * {
+    visibility: visible !important;
+  }
+
+  /* Hide empty rows */
+  .invoice-a4.print-only .empty-row {
+    display: none !important;
   }
 }
 
 /* Screen display */
 @media screen {
   .print-only {
-    display: none;
+    display: none !important;
   }
 
   .screen-only {

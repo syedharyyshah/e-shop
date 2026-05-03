@@ -21,7 +21,9 @@ export interface Order {
   tax: number;
   taxRate: number;
   total: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'completed' | 'cancelled' | 'returned' | 'partially_returned';
+  returnStatus: 'none' | 'partial' | 'full';
+  returns?: string[];
   paymentMethod: 'cash' | 'card' | 'digital';
   notes: string | null;
   existingLoanId?: string | { _id: string; customerName: string };
@@ -47,7 +49,7 @@ export interface OrderFormData {
 
 export interface OrderFilters {
   search?: string;
-  status?: 'all' | 'pending' | 'completed' | 'cancelled';
+  status?: 'all' | 'pending' | 'completed' | 'cancelled' | 'returned' | 'partially_returned';
   startDate?: string;
   endDate?: string;
   sortBy?: string;

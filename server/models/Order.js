@@ -99,9 +99,20 @@ const orderSchema = new mongoose.Schema({
   // Order Status
   status: {
     type: String,
-    enum: ['pending', 'completed', 'cancelled'],
+    enum: ['pending', 'completed', 'cancelled', 'returned', 'partially_returned'],
     default: 'completed'
   },
+  // Return tracking
+  returnStatus: {
+    type: String,
+    enum: ['none', 'partial', 'full'],
+    default: 'none'
+  },
+  // Array of return IDs associated with this order
+  returns: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Return'
+  }],
   paymentMethod: {
     type: String,
     enum: ['cash', 'card', 'digital'],
