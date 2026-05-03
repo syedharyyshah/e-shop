@@ -127,3 +127,50 @@
     border-radius: 3px;
   }
 }
+
+/* Print styles for invoice */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Show only the printable invoice content */
+  #printable-invoice,
+  #printable-invoice * {
+    visibility: visible;
+  }
+  
+  /* Position the invoice content at the top */
+  #printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 20px;
+    background: white;
+  }
+  
+  /* Ensure proper page breaks */
+  #printable-invoice table {
+    page-break-inside: auto;
+  }
+  
+  #printable-invoice tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  /* Hide dialog overlay elements */
+  [data-radix-dialog-overlay],
+  [data-radix-dialog-content] > button,
+  [role="dialog"] > div:first-child {
+    display: none !important;
+  }
+  
+  /* Ensure background colors print */
+  #printable-invoice * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

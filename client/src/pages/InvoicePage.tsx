@@ -65,6 +65,7 @@ export default function InvoicePage() {
   const [pendingLoanItems, setPendingLoanItems] = useState<any[]>([]);
   const [addedByName, setAddedByName] = useState('');
   const [addedByRelation, setAddedByRelation] = useState('');
+  const [savedOrderId, setSavedOrderId] = useState<string | null>(null);
 
   // Fetch user's shop name and products on component mount
   useEffect(() => {
@@ -444,6 +445,7 @@ export default function InvoicePage() {
         // No existing loan - create new one
         const orderResponse = await orderApi.createOrder(orderData);
         const newOrderId = orderResponse.data._id;
+        setSavedOrderId(newOrderId);
 
         const loanData = {
           orderId: newOrderId,
@@ -493,11 +495,12 @@ export default function InvoicePage() {
           paymentMethod: 'cash' as const,
         };
 
-        await orderApi.createOrder(orderData);
+        const orderResponse = await orderApi.createOrder(orderData);
+        setSavedOrderId(orderResponse.data._id);
 
         toast({
           title: 'Success',
-          description: 'Order saved successfully!',
+          description: `Order saved successfully! Order ID: #${orderResponse.data._id.slice(-6)}`,
         });
 
         // Refresh products to get updated stock
@@ -570,6 +573,7 @@ export default function InvoicePage() {
       // First create the order
       const orderResponse = await orderApi.createOrder(pendingOrderData);
       const orderId = orderResponse.data._id;
+      setSavedOrderId(orderId);
       
       // Combine relation and name (e.g., "Brother Ali")
       const fullAddedByName = addedByRelation && addedByName 
@@ -581,7 +585,7 @@ export default function InvoicePage() {
       
       toast({
         title: 'Success',
-        description: `Items added to existing loan of ${existingLoan.customerName} successfully!`,
+        description: `Order #${orderId.slice(-6)} added to existing loan of ${existingLoan.customerName} successfully!`,
       });
 
       // Refresh products to get updated stock
@@ -628,6 +632,7 @@ export default function InvoicePage() {
       // Create order
       const orderResponse = await orderApi.createOrder(pendingOrderData);
       const orderId = orderResponse.data._id;
+      setSavedOrderId(orderId);
       
       // Create new loan
       const loanData = {
@@ -646,7 +651,7 @@ export default function InvoicePage() {
       
       toast({
         title: 'Success',
-        description: 'New loan created successfully!',
+        description: `Order #${orderId.slice(-6)} saved with new loan successfully!`,
       });
 
       // Refresh products to get updated stock
@@ -708,8 +713,8 @@ export default function InvoicePage() {
             </div>
             <div className="invoice-details">
               <div className="detail-row">
-                <div className="detail-label">INVOICE #</div>
-                <div className="detail-value">{invoiceNumber}</div>
+                <div className="detail-label">{savedOrderId ? 'ORDER ID' : 'INVOICE #'}</div>
+                <div className="detail-value">{savedOrderId ? `#${savedOrderId.slice(-6)}` : invoiceNumber}</div>
               </div>
               <div className="detail-row">
                 <div className="detail-label">DATE</div>
@@ -773,13 +778,13 @@ export default function InvoicePage() {
                   );
                 })
               )}
-              {/* Empty rows for alignment */}
-              {[...Array(Math.max(0, 8 - items.length))].map((_, i) => (
+              {/* Empty rows for alignment - limited to prevent extra pages */}
+              {[...Array(Math.max(0, Math.min(3, 8 - items.length)))].map((_, i) => (
                 <tr key={`empty-${i}`} className="empty-row">
                   <td className="item-description">&nbsp;</td>
-                  <td className="item-qty">-</td>
-                  <td className="item-unit-price">-</td>
-                  <td className="item-amount">-</td>
+                  <td className="item-qty">&nbsp;</td>
+                  <td className="item-unit-price">&nbsp;</td>
+                  <td className="item-amount">&nbsp;</td>
                 </tr>
               ))}
             </tbody>
@@ -1343,7 +1348,14 @@ export default function InvoicePage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-bold text-primary">{shopName}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Invoice #{Date.now().toString().slice(-6)}</p>
+                    {savedOrderId ? (
+                      <div className="mt-2 p-2 bg-primary/10 rounded-md">
+                        <p className="text-xs text-muted-foreground">Order ID</p>
+                        <p className="text-sm font-bold text-primary">#{savedOrderId.slice(-6)}</p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">Draft Invoice</p>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString()}</p>
                 </div>
