@@ -9,6 +9,7 @@ const seedRoutes = require('./routes/seedRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const invoiceLoanRoutes = require('./routes/invoiceLoanRoutes');
 const returnRoutes = require('./routes/returnRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 dotenv.config();
 
@@ -35,6 +36,7 @@ app.use('/api/seed', seedRoutes);
 app.use('/api/loans', loanRoutes);
 app.use('/api/invoice-loans', invoiceLoanRoutes);
 app.use('/api/returns', returnRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler - place at end
 app.use((req, res) => {

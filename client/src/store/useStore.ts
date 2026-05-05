@@ -24,7 +24,7 @@ interface AppStore {
 export const useStore = create<AppStore>((set) => ({
   products: [],
   orders: initialOrders,
-  sidebarOpen: true,
+  sidebarOpen: false,
   lowStockThreshold: 20,
   highStockThreshold: 200,
   setProducts: (products) => set({ products }),

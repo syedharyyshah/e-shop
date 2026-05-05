@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,8 @@ import type { Return, ReturnItem } from '@/types/return';
 export default function OrdersPage() {
   const { toast } = useToast();
   const location = useLocation();
-  const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('q') || '');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -496,7 +497,15 @@ export default function OrdersPage() {
               placeholder="Search orders by ID, customer name or phone..."
               className="pl-12 pr-4 py-2.5 h-11 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md focus:shadow-md transition-all duration-200 placeholder:text-slate-400 text-sm"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearch(val);
+                setSearchParams(prev => {
+                  if (val) prev.set('q', val);
+                  else prev.delete('q');
+                  return prev;
+                });
+              }}
             />
           </div>
           <Button variant="outline" onClick={fetchOrders} disabled={loading}>
