@@ -1,4 +1,4 @@
-import { Bell, User, Menu, LogOut, Settings, Store } from 'lucide-react';
+import { User, Menu, LogOut, Settings, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect, useState } from 'react';
 import { userApi } from '@/services/userApi';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 interface UserData {
   name: string;
@@ -92,10 +93,7 @@ export function Navbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-        </Button>
+        <NotificationCenter />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

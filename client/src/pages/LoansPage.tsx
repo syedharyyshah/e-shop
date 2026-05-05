@@ -23,6 +23,15 @@ export default function LoansPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'regular' | 'invoice'>('invoice');
+
+  // Handle tab from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'regular' || tab === 'invoice') {
+      setActiveTab(tab as 'regular' | 'invoice');
+    }
+  }, []);
   
   // Regular loans state
   const [loans, setLoans] = useState<Loan[]>([]);
