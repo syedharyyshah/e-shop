@@ -14,7 +14,15 @@ import {
   DialogFooter,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Search, Loader2, Plus, Edit, Trash2, CheckCircle, Receipt, ArrowRight, Package, FileSpreadsheet } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { Search, Loader2, Plus, Edit, Trash2, CheckCircle, Receipt, ArrowRight, Package, FileSpreadsheet, User } from 'lucide-react';
 import { loanApi, Loan, LoanFormData } from '@/services/loanApi';
 import { invoiceLoanApi, InvoiceLoan, InvoiceLoanItem } from '@/services/invoiceLoanApi';
 import { useToast } from '@/hooks/use-toast';
@@ -535,6 +543,45 @@ export default function LoansPage() {
     }
   };
 
+  const StatusBadge = ({ status }: { status: string }) => {
+    const config: any = {
+      'Paid': {
+        label: 'Paid',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50',
+        dotColor: 'bg-emerald-500',
+        glow: 'shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+      },
+      'Pending': {
+        label: 'Pending',
+        className: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50',
+        dotColor: 'bg-amber-500',
+        glow: 'shadow-[0_0_10px_rgba(245,158,11,0.15)]'
+      },
+      'Partial': {
+        label: 'Partial',
+        className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50',
+        dotColor: 'bg-blue-500',
+        glow: 'shadow-[0_0_10px_rgba(59,130,246,0.15)]'
+      }
+    };
+
+    const c = config[status] || config['Pending'];
+    
+    return (
+      <Badge 
+        variant="outline" 
+        className={cn(
+          "gap-2 px-2.5 py-1 font-bold text-[10px] uppercase tracking-tight rounded-full border transition-all duration-300 w-fit",
+          c.className,
+          c.glow
+        )}
+      >
+        <span className={cn("h-1.5 w-1.5 rounded-full", c.dotColor, status === 'Pending' && "animate-pulse")} />
+        {c.label}
+      </Badge>
+    );
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleString('en-GB', {
@@ -601,196 +648,262 @@ export default function LoansPage() {
           </Button>
         </div>
 
-        <Card className="border-none shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              {activeTab === 'regular' ? (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-muted-foreground bg-slate-50 dark:bg-slate-900/50">
-                      <th className="text-left py-3 px-4 font-medium">Borrower</th>
-                      <th className="text-left py-3 px-4 font-medium">Amount</th>
-                      <th className="text-left py-3 px-4 font-medium">Date Given</th>
-                      <th className="text-left py-3 px-4 font-medium">Due Date</th>
-                      <th className="text-left py-3 px-4 font-medium">Status</th>
-                      <th className="text-left py-3 px-4 font-medium">Notes</th>
-                      <th className="text-right py-3 px-4 font-medium">Actions</th>
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-[2rem] border border-white/20 dark:border-white/5 shadow-premium overflow-hidden">
+          <ScrollArea className="w-full">
+            {activeTab === 'regular' ? (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-none text-muted-foreground">
+                    <th className="text-left py-6 pl-8 font-bold uppercase tracking-wider text-[11px]">Borrower</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Financials</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Given Date</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Due Date</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Status</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Notes</th>
+                    <th className="text-right py-6 pr-8 font-bold uppercase tracking-wider text-[11px] w-40">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                        <p className="text-slate-400 mt-4 font-medium">Loading loans...</p>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                          <p className="text-muted-foreground mt-2">Loading loans...</p>
-                        </td>
-                      </tr>
-                    ) : filteredLoans.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                          No regular loans found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredLoans.map((loan) => (
-                        <tr key={loan._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                          <td className="py-3 px-4 font-medium">{loan.borrowerName}</td>
-                          <td className="py-3 px-4 font-medium text-primary">Rs. {loan.amount.toFixed(2)}</td>
-                          <td className="py-3 px-4">{formatDate(loan.dateGiven)}</td>
-                          <td className="py-3 px-4">{formatDate(loan.dueDate)}</td>
-                          <td className="py-3 px-4">
-                            <Badge
-                              variant={loan.status === 'Paid' ? 'default' : 'secondary'}
-                              className={loan.status === 'Paid' ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20' : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'}
-                            >
-                              {loan.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4 text-muted-foreground max-w-[200px] truncate">
-                            {loan.notes || '-'}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {loan.status === 'Pending' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  onClick={() => handleMarkAsPaid(loan._id)}
-                                  title="Mark as Paid"
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={() => handleOpenDialog(loan)}
-                                title="Edit Loan"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDelete(loan._id)}
-                                title="Delete Loan"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-muted-foreground bg-slate-50 dark:bg-slate-900/50">
-                      <th className="text-left py-3 px-4 font-medium">Customer</th>
-                      <th className="text-left py-3 px-4 font-medium">Items</th>
-                      <th className="text-left py-3 px-4 font-medium">Total Amount</th>
-                      <th className="text-left py-3 px-4 font-medium">Paid / Remaining</th>
-                      <th className="text-left py-3 px-4 font-medium">Status</th>
-                      <th className="text-left py-3 px-4 font-medium">Due Date</th>
-                      <th className="text-left py-3 px-4 font-medium">CNIC</th>
-                      <th className="text-right py-3 px-4 font-medium">Actions</th>
+                  ) : filteredLoans.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
+                        No regular loans found.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceLoading ? (
-                      <tr>
-                        <td colSpan={8} className="py-8 text-center">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                          <p className="text-muted-foreground mt-2">Loading invoice loans...</p>
+                  ) : (
+                    filteredLoans.map((loan) => (
+                      <tr key={loan._id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-t border-slate-100 dark:border-slate-800/50 h-24">
+                        <td className="py-3 pl-8">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                              <User className="h-5 w-5 text-slate-400" />
+                            </div>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{loan.borrowerName}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col">
+                            <span className="font-black text-lg text-primary">Rs. {loan.amount.toLocaleString()}</span>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Loan Amount</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{new Date(loan.dateGiven).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                            <span className="text-[10px] text-slate-400 font-medium italic lowercase">{new Date(loan.dateGiven).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{formatDate(loan.dueDate)}</span>
+                        </td>
+                        <td>
+                          <StatusBadge status={loan.status} />
+                        </td>
+                        <td className="text-muted-foreground max-w-[200px] truncate italic text-xs">
+                          {loan.notes || 'No notes'}
+                        </td>
+                        <td className="text-right pr-8">
+                          <div className="flex items-center justify-end gap-1.5 transition-all duration-300">
+                            {loan.status === 'Pending' && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="secondary"
+                                      size="icon"
+                                      className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-600 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                      onClick={() => handleMarkAsPaid(loan._id)}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Mark as Paid</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 hover:bg-blue-600 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                    onClick={() => handleOpenDialog(loan)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Edit Loan</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl bg-red-50 dark:bg-red-950/20 text-red-500 hover:bg-red-500 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                    onClick={() => handleDelete(loan._id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete Loan</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </td>
                       </tr>
-                    ) : filteredInvoiceLoans.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                          No invoice loans found.
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-none text-muted-foreground">
+                    <th className="text-left py-6 pl-8 font-bold uppercase tracking-wider text-[11px]">Customer</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Summary</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Total Amount</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Paid / Remaining</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Status</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Due Date</th>
+                    <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">ID/CNIC</th>
+                    <th className="text-right py-6 pr-8 font-bold uppercase tracking-wider text-[11px] w-40">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                        <p className="text-slate-400 mt-4 font-medium">Loading invoice loans...</p>
+                      </td>
+                    </tr>
+                  ) : filteredInvoiceLoans.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                        No invoice loans found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInvoiceLoans.map((loan) => (
+                      <tr key={loan._id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-t border-slate-100 dark:border-slate-800/50 h-24">
+                        <td className="py-3 pl-8">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                              <User className="h-5 w-5 text-slate-400" />
+                            </div>
+                            <div className="flex flex-col">
+                              <p className="font-bold text-slate-800 dark:text-slate-200">{loan.customerName}</p>
+                              <p className="text-[10px] text-slate-400 font-bold tracking-tight">{loan.customerPhone}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1.5">
+                            <Package className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{loan.items.length} Product{loan.items.length !== 1 ? 's' : ''}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col">
+                            <span className="font-black text-lg text-primary">Rs. {loan.totalAmount.toLocaleString()}</span>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Gross Total</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1 text-emerald-600 font-black">
+                              <span className="text-xs">Paid:</span>
+                              <span className="text-sm">Rs. {loan.amountPaid.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-rose-500 font-black">
+                              <span className="text-[10px]">Rem:</span>
+                              <span className="text-xs">Rs. {loan.remainingAmount.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <StatusBadge status={loan.status} />
+                        </td>
+                        <td>
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{formatDate(loan.dueDate)}</span>
+                        </td>
+                        <td>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-black text-slate-700 dark:text-slate-300 tracking-tight">
+                              {loan.customerCNIC || '-'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 uppercase font-bold tracking-widest">National ID</span>
+                          </div>
+                        </td>
+                        <td className="text-right pr-8">
+                          <div className="flex items-center justify-end gap-1.5 transition-all duration-300">
+                            {loan.status !== 'Paid' && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="secondary"
+                                      size="icon"
+                                      className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 hover:bg-emerald-600 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                      onClick={() => handleOpenInvoiceDetail(loan)}
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Add Payment</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 hover:bg-blue-600 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                    onClick={() => handleOpenInvoiceDetail(loan)}
+                                  >
+                                    <ArrowRight className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>View Details</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl bg-red-50 dark:bg-red-950/20 text-red-500 hover:bg-red-500 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                    onClick={() => handleDeleteInvoiceLoan(loan._id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete Loan</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         </td>
                       </tr>
-                    ) : (
-                      filteredInvoiceLoans.map((loan) => (
-                        <tr key={loan._id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="font-medium">{loan.customerName}</div>
-                            <div className="text-xs text-muted-foreground">{loan.customerPhone}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge variant="outline">{loan.items.length} items</Badge>
-                          </td>
-                          <td className="py-3 px-4 font-medium text-primary">Rs. {loan.totalAmount.toFixed(2)}</td>
-                          <td className="py-3 px-4">
-                            <div className="text-sm">
-                              <span className="text-green-600">Rs. {loan.amountPaid.toFixed(2)}</span>
-                              <span className="text-muted-foreground mx-1">/</span>
-                              <span className="text-amber-600">Rs. {loan.remainingAmount.toFixed(2)}</span>
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <Badge
-                              variant={loan.status === 'Paid' ? 'default' : loan.status === 'Partial' ? 'outline' : 'secondary'}
-                              className={
-                                loan.status === 'Paid' 
-                                  ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20' 
-                                  : loan.status === 'Partial'
-                                  ? 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'
-                                  : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'
-                              }
-                            >
-                              {loan.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3 px-4">{formatDate(loan.dueDate)}</td>
-                          <td className="py-3 px-4 text-xs font-mono text-muted-foreground">{loan.customerCNIC || '-'}</td>
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {loan.status !== 'Paid' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                  onClick={() => handleOpenInvoiceDetail(loan)}
-                                  title="Add Payment"
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={() => handleOpenInvoiceDetail(loan)}
-                                title="View Details"
-                              >
-                                <ArrowRight className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => handleDeleteInvoiceLoan(loan._id)}
-                                title="Delete Loan"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </ScrollArea>
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

@@ -17,6 +17,7 @@ import AdminDashboardPage from "@/pages/AdminDashboardPage";
 import UserManagementPage from "@/pages/UserManagementPage";
 import UserLoginPage from "@/pages/UserLoginPage";
 import UserSignupPage from "@/pages/UserSignupPage";
+import LandingPage from "@/pages/LandingPage";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           {/* Public Routes - No Authentication Required */}
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<UserLoginPage />} />
           <Route path="/signup" element={<UserSignupPage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />

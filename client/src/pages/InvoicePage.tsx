@@ -47,7 +47,7 @@ export default function InvoicePage() {
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerCnic, setCustomerCnic] = useState('');
-  const [shopName, setShopName] = useState('ShopFlow');
+  const [shopName, setShopName] = useState('SHS Shop Flow');
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
@@ -926,7 +926,7 @@ export default function InvoicePage() {
                             <p className="font-medium text-sm truncate">{product.productName}</p>
                             <p className="text-xs text-muted-foreground">{product.companyName}</p>
                             <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-xs">Rs. {product.price}/{product.baseUnit || 'piece'}</Badge>
+                              <Badge variant="outline" className="text-xs">PKR {product.price}/{product.baseUnit || 'piece'}</Badge>
                               <span className="text-xs text-muted-foreground">Stock: {product.stockQuantity}</span>
                             </div>
                           </div>
@@ -979,7 +979,7 @@ export default function InvoicePage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{selectedProduct.category}</Badge>
                         <span className="text-sm font-medium text-primary">
-                          Rs. {selectedProduct.price} / {selectedProduct.baseUnit}
+                          PKR {selectedProduct.price} / {selectedProduct.baseUnit}
                         </span>
                       </div>
                       <div className="text-sm">
@@ -1108,7 +1108,7 @@ export default function InvoicePage() {
                           <div className="border-t pt-2 mt-2">
                             <div className="flex justify-between items-center">
                               <span className="font-semibold text-sm sm:text-base">Item Total:</span>
-                              <span className="font-bold text-base sm:text-lg text-primary">Rs. {totalAmount.toFixed(2)}</span>
+                              <span className="font-bold text-base sm:text-lg text-primary">PKR {totalAmount.toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
@@ -1178,7 +1178,7 @@ export default function InvoicePage() {
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="outline">{item.category}</Badge>
                               <span className="text-sm font-medium text-primary">
-                                Rs. {item.unitPrice}/{item.baseUnit}
+                                PKR {item.unitPrice}/{item.baseUnit}
                               </span>
                             </div>
                             <p className="text-sm mt-1">
@@ -1316,7 +1316,7 @@ export default function InvoicePage() {
                             <div className="border-t pt-2 mt-2">
                               <div className="flex justify-between items-center">
                                 <span className="font-semibold">Item Total:</span>
-                                <span className="font-bold text-primary">Rs. {item.total.toFixed(2)}</span>
+                                <span className="font-bold text-primary">PKR {item.total.toFixed(2)}</span>
                               </div>
                             </div>
                           </div>
@@ -1410,7 +1410,7 @@ export default function InvoicePage() {
                               ? (item.unitPrice * item.unitsPerParent).toFixed(2) 
                               : item.unitPrice.toFixed(2)}
                           </td>
-                          <td className="py-2 text-right">Rs. {item.total.toFixed(2)}</td>
+                          <td className="py-2 text-right">PKR {item.total.toFixed(2)}</td>
                         </tr>
                       );
                     })}
@@ -1420,10 +1420,10 @@ export default function InvoicePage() {
                 <Separator />
 
                 <div className="space-y-1 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>Rs. {subtotal.toFixed(2)}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Tax (10%)</span><span>Rs. {tax.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>PKR {subtotal.toFixed(2)}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Tax (10%)</span><span>PKR {tax.toFixed(2)}</span></div>
                   <Separator className="my-2" />
-                  <div className="flex justify-between font-bold text-base"><span>Total</span><span>Rs. {total.toFixed(2)}</span></div>
+                  <div className="flex justify-between font-bold text-base"><span>Total</span><span>PKR {total.toFixed(2)}</span></div>
                 </div>
 
                 <div className="space-y-2">
@@ -1516,7 +1516,7 @@ export default function InvoicePage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total Amount:</span>
-                <span className="font-bold text-primary">Rs. {total.toFixed(2)}</span>
+                <span className="font-bold text-primary">PKR {total.toFixed(2)}</span>
               </div>
               {paymentMethod === 'loan' && (
                 <div className="flex justify-between text-sm pt-2 border-t">
@@ -1572,7 +1572,7 @@ export default function InvoicePage() {
                   <div className="mt-2 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Current Balance:</span>
-                      <span className="font-bold">Rs. {existingLoan.remainingAmount.toFixed(2)}</span>
+                      <span className="font-bold">PKR {existingLoan.remainingAmount.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Items:</span>
@@ -1598,7 +1598,7 @@ export default function InvoicePage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">New Amount:</span>
-                      <span className="font-bold">Rs. {total.toFixed(2)}</span>
+                      <span className="font-bold">PKR {total.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-blue-200">
                       <span className="text-muted-foreground">Combined Total:</span>

@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
           // Show toast notification
           toast.info(
             <div className="flex items-center gap-2">
-              <Bell className="w-5 h-5 text-yellow-500" />
+              <Bell className="w-5 h-5 text-amber-500" strokeWidth={1.5} />
               <span>New user registration request!</span>
             </div>,
             {
@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
     { title: 'Total Users', value: '1,234', icon: Users, change: '+12%' },
     { title: 'Products', value: '456', icon: Package, change: '+5%' },
     { title: 'Orders', value: '89', icon: ShoppingCart, change: '+23%' },
-    { title: 'Revenue', value: '$12,450', icon: DollarSign, change: '+18%' },
+    { title: 'Revenue', value: 'PKR 12,450', icon: DollarSign, change: '+18%' },
   ];
 
   return (
@@ -106,12 +106,15 @@ export default function AdminDashboardPage() {
             <Button 
               variant="outline" 
               size="icon" 
-              className="relative"
+              className="relative h-10 w-10 rounded-full border-border/50 hover:bg-primary/10 transition-all duration-300 group"
               onClick={() => navigate('/admin/users')}
             >
-              <Bell className="w-5 h-5" />
+              <Bell 
+                className="h-5.5 w-5.5 text-muted-foreground group-hover:text-primary transition-colors duration-300 group-hover:rotate-[15deg]" 
+                strokeWidth={1.5}
+              />
               {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
+                <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold border-2 border-background shadow-[0_2px_8px_rgba(239,68,68,0.4)] animate-pulse ring-1 ring-red-500/20">
                   {pendingCount > 9 ? '9+' : pendingCount}
                 </span>
               )}
@@ -128,7 +131,7 @@ export default function AdminDashboardPage() {
           <Card className="border-yellow-200 bg-yellow-50/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2 text-yellow-700">
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4 h-4 text-amber-600" strokeWidth={1.5} />
                 Recent User Signups
               </CardTitle>
             </CardHeader>

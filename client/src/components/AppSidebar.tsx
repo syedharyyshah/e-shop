@@ -43,42 +43,48 @@ export function AppSidebar() {
     >
       {/* Logo */}
       <div className={cn(
-        'flex flex-col border-b border-sidebar-border',
-        sidebarOpen ? 'h-16 px-4' : 'py-3 px-2'
+        'flex flex-col border-b border-sidebar-border/30 transition-all duration-300',
+        sidebarOpen ? 'h-20 px-4' : 'h-20 px-2'
       )}>
         {/* Logo Row */}
         <div className={cn(
-          'flex items-center',
-          isExpanded ? 'justify-between h-full' : 'flex-col gap-2'
+          'flex items-center h-full',
+          isExpanded ? 'justify-between' : 'justify-center'
         )}>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-md shadow-primary/30">
+          <div className="flex items-center gap-3 group/logo">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-blue-600 shadow-lg shadow-primary/30 group-hover/logo:scale-110 transition-transform duration-300">
               <Store className="h-5 w-5 text-primary-foreground" />
             </div>
             {isExpanded && (
-              <span className="text-lg font-semibold tracking-tight whitespace-nowrap overflow-hidden">ShopFlow</span>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold tracking-tighter whitespace-nowrap overflow-hidden bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+                  SHS Shop Flow
+                </span>
+                <span className="text-[10px] font-medium text-sidebar-muted uppercase tracking-[0.2em] -mt-1">
+                  Enterprise
+                </span>
+              </div>
             )}
           </div>
 
           {/* Pin/Unpin Toggle Button - shows on hover */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSidebarOpen(!sidebarOpen);
-            }}
-            className={cn(
-              'flex items-center justify-center rounded-lg bg-primary/80 text-primary-foreground hover:bg-primary hover:shadow-lg transition-all duration-200',
-              isExpanded ? 'h-7 w-7 opacity-100' : 'h-6 w-6 opacity-0 group-hover:opacity-100'
-            )}
-            title={sidebarOpen ? 'Unpin sidebar' : 'Pin sidebar open'}
-          >
-            <ChevronRight
-              className={cn(
-                'transition-transform duration-200',
-                sidebarOpen ? 'h-3.5 w-3.5' : 'h-3.5 w-3.5 rotate-180'
-              )}
-            />
-          </button>
+          {isExpanded && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSidebarOpen(!sidebarOpen);
+              }}
+              className="flex items-center justify-center rounded-lg bg-sidebar-accent/50 text-sidebar-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-lg transition-all duration-300 h-8 w-8"
+              title={sidebarOpen ? 'Unpin sidebar' : 'Pin sidebar open'}
+            >
+              <ChevronRight
+                className={cn(
+                  'transition-transform duration-300 h-4 w-4',
+                  sidebarOpen ? 'rotate-180' : ''
+                )}
+              />
+            </button>
+          )}
         </div>
       </div>
 
@@ -112,7 +118,7 @@ export function AppSidebar() {
       {/* Footer */}
       {isExpanded && (
         <div className="border-t border-sidebar-border p-4 whitespace-nowrap overflow-hidden transition-all duration-300">
-          <p className="text-xs text-sidebar-muted">© 2024 ShopFlow</p>
+          <p className="text-xs text-sidebar-muted">© 2024 SHS Shop Flow</p>
         </div>
       )}
     </aside>

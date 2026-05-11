@@ -104,199 +104,221 @@ export default function UserSignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <UserPlus className="w-8 h-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Create Your Account</CardTitle>
-          <CardDescription>
-            Fill in your details to register. Your account will be reviewed by admin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Personal Information */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2 text-primary">
-                <User className="w-5 h-5" />
-                Personal Information
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
-                  <Input
-                    id="fullName"
-                    placeholder="Enter your full name"
-                    value={formData.fullName}
-                    onChange={(e) => handleChange('fullName', e.target.value)}
-                    required
-                  />
-                </div>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden py-10">
+      {/* Background Image with blur & overlay */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat blur-[2px] scale-105"
+        style={{ backgroundImage: 'url("/bg-shop.png")' }}
+      />
+      <div className="absolute inset-0 z-0 bg-slate-900/70 backdrop-blur-sm" />
 
-                <div className="space-y-2">
-                  <Label htmlFor="idCardNumber" className="flex items-center gap-1">
-                    <CreditCard className="w-4 h-4" />
-                    ID Card Number (CNIC) *
-                  </Label>
-                  <Input
-                    id="idCardNumber"
-                    placeholder="13 digit CNIC (e.g., 3520112345678)"
-                    value={formData.idCardNumber}
-                    onChange={(e) => handleChange('idCardNumber', e.target.value.replace(/\D/g, '').slice(0, 13))}
-                    maxLength={13}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">Enter 13 digit Pakistani CNIC number without dashes</p>
-                </div>
+      <div className="w-full max-w-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
+        <Card className="shadow-2xl border border-white/20 bg-white/10 backdrop-blur-xl rounded-[2rem] overflow-hidden">
+          <CardHeader className="text-center space-y-2 pb-6 pt-8 px-8">
+            <div className="mx-auto w-20 h-20 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center mb-4 shadow-2xl border border-white/20 hover:scale-105 transition-transform duration-300">
+              <UserPlus className="w-10 h-10 text-white drop-shadow-lg" />
+            </div>
+            <CardTitle className="text-3xl font-black text-white tracking-tight drop-shadow-md">Create Your Account</CardTitle>
+            <CardDescription className="text-white/70 font-medium">
+              Fill in your details to register. Your account will be reviewed by admin.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-8 pb-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-white border-b border-white/10 pb-2">
+                  <User className="w-5 h-5 text-emerald-400" />
+                  Personal Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-white/90 font-semibold ml-1">Full Name *</Label>
+                    <Input
+                      id="fullName"
+                      placeholder="Enter your full name"
+                      value={formData.fullName}
+                      onChange={(e) => handleChange('fullName', e.target.value)}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="birthday" className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    Date of Birth *
-                  </Label>
-                  <Input
-                    id="birthday"
-                    type="date"
-                    value={formData.birthday}
-                    onChange={(e) => handleChange('birthday', e.target.value)}
-                    required
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="idCardNumber" className="flex items-center gap-1 text-white/90 font-semibold ml-1">
+                      <CreditCard className="w-4 h-4 text-white/60" />
+                      ID Card Number (CNIC) *
+                    </Label>
+                    <Input
+                      id="idCardNumber"
+                      placeholder="13 digit CNIC (e.g., 3520112345678)"
+                      value={formData.idCardNumber}
+                      onChange={(e) => handleChange('idCardNumber', e.target.value.replace(/\D/g, '').slice(0, 13))}
+                      maxLength={13}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                    <p className="text-[10px] text-white/50 ml-1">Enter 13 digit Pakistani CNIC number without dashes</p>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Gender *</Label>
-                  <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Label htmlFor="birthday" className="flex items-center gap-1 text-white/90 font-semibold ml-1">
+                      <Calendar className="w-4 h-4 text-white/60" />
+                      Date of Birth *
+                    </Label>
+                    <Input
+                      id="birthday"
+                      type="date"
+                      value={formData.birthday}
+                      onChange={(e) => handleChange('birthday', e.target.value)}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="gender" className="text-white/90 font-semibold ml-1">Gender *</Label>
+                    <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value)}>
+                      <SelectTrigger className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-white/10 text-white">
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Contact Information */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold text-lg flex items-center gap-2 text-primary">
-                <Phone className="w-5 h-5" />
-                Contact Information
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number *</Label>
-                  <Input
-                    id="phoneNumber"
-                    placeholder="03XXXXXXXXX"
-                    value={formData.phoneNumber}
-                    onChange={(e) => handleChange('phoneNumber', e.target.value.replace(/\D/g, '').slice(0, 11))}
-                    maxLength={11}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">Format: 03XXXXXXXXX (11 digits)</p>
-                </div>
+              {/* Contact Information */}
+              <div className="space-y-4 pt-2">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-white border-b border-white/10 pb-2">
+                  <Phone className="w-5 h-5 text-blue-400" />
+                  Contact Information
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber" className="text-white/90 font-semibold ml-1">Phone Number *</Label>
+                    <Input
+                      id="phoneNumber"
+                      placeholder="03XXXXXXXXX"
+                      value={formData.phoneNumber}
+                      onChange={(e) => handleChange('phoneNumber', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      maxLength={11}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                    <p className="text-[10px] text-white/50 ml-1">Format: 03XXXXXXXXX (11 digits)</p>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    required
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white/90 font-semibold ml-1">Email Address *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={formData.email}
+                      onChange={(e) => handleChange('email', e.target.value)}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                  </div>
 
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="address" className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    Complete Address *
-                  </Label>
-                  <Textarea
-                    id="address"
-                    placeholder="House #, Street, Area, City, Province"
-                    value={formData.address}
-                    onChange={(e) => handleChange('address', e.target.value)}
-                    required
-                  />
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address" className="flex items-center gap-1 text-white/90 font-semibold ml-1">
+                      <MapPin className="w-4 h-4 text-white/60" />
+                      Complete Address *
+                    </Label>
+                    <Textarea
+                      id="address"
+                      placeholder="House #, Street, Area, City, Province"
+                      value={formData.address}
+                      onChange={(e) => handleChange('address', e.target.value)}
+                      className="min-h-[80px] bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Shop Information */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold text-lg flex items-center gap-2 text-primary">
-                <Store className="w-5 h-5" />
-                Shop Information
-              </h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="shopName">Name of Your Shop *</Label>
-                <Input
-                  id="shopName"
-                  placeholder="Enter your shop/business name"
-                  value={formData.shopName}
-                  onChange={(e) => handleChange('shopName', e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold text-lg flex items-center gap-2 text-primary">
-                🔐 Security
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Shop Information */}
+              <div className="space-y-4 pt-2">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-white border-b border-white/10 pb-2">
+                  <Store className="w-5 h-5 text-orange-400" />
+                  Shop Information
+                </h3>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password *</Label>
+                  <Label htmlFor="shopName" className="text-white/90 font-semibold ml-1">Name of Your Shop *</Label>
                   <Input
-                    id="password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={formData.password}
-                    onChange={(e) => handleChange('password', e.target.value)}
-                    minLength={6}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                    id="shopName"
+                    placeholder="Enter your shop/business name"
+                    value={formData.shopName}
+                    onChange={(e) => handleChange('shopName', e.target.value)}
+                    className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
                     required
                   />
                 </div>
               </div>
-            </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create Account'}
-            </Button>
+              {/* Password */}
+              <div className="space-y-4 pt-2">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-white border-b border-white/10 pb-2">
+                  <span className="text-xl">🔐</span> Security
+                </h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-white/90 font-semibold ml-1">Password *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={formData.password}
+                      onChange={(e) => handleChange('password', e.target.value)}
+                      minLength={6}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                  </div>
 
-            <p className="text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Button variant="link" className="p-0" onClick={() => navigate('/login')}>
-                Login here
-              </Button>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-white/90 font-semibold ml-1">Confirm Password *</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                      className="h-12 bg-black/20 border-white/10 text-white placeholder:text-white/40 focus:border-white/30 focus:ring-2 focus:ring-white/20 rounded-xl transition-all shadow-inner"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <Button type="submit" className="w-full h-14 rounded-xl bg-white text-slate-900 hover:bg-white/90 font-bold text-lg shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] transition-all duration-300 hover:-translate-y-1" disabled={loading}>
+                  {loading ? 'Creating Account...' : 'Create Account'}
+                </Button>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-white/10 text-center">
+                <p className="text-sm text-white/70 font-medium">
+                  Already have an account?{' '}
+                  <Button variant="link" className="p-0 text-white hover:text-primary-300 font-bold ml-1 hover:underline underline-offset-4" onClick={() => navigate('/login')}>
+                    Login here
+                  </Button>
+                </p>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

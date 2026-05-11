@@ -34,7 +34,7 @@
     --input: 220 13% 91%;
     --ring: 221 83% 53%;
 
-    --radius: 0.75rem;
+    --radius: 1.25rem;
 
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 213 31% 91%;
@@ -52,6 +52,9 @@
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
+
+    --shadow-premium: 0 10px 40px -10px rgba(0, 0, 0, 0.05);
+    --shadow-premium-hover: 0 20px 50px -12px rgba(0, 0, 0, 0.1);
   }
 
   .dark {
@@ -81,7 +84,7 @@
 
     --border: 217 33% 17%;
     --input: 217 33% 17%;
-    --ring: 221 83% 53%;
+    --radius: 1.25rem;
 
     --sidebar-background: 222 47% 6%;
     --sidebar-foreground: 213 31% 91%;
@@ -99,6 +102,9 @@
     --warning-foreground: 0 0% 100%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
+
+    --shadow-premium: 0 10px 40px -10px rgba(0, 0, 0, 0.3);
+    --shadow-premium-hover: 0 20px 50px -12px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -126,6 +132,37 @@
     background: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
   }
+
+  .shadow-premium {
+    box-shadow: var(--shadow-premium);
+  }
+
+  .shadow-premium-hover {
+    transition: all 0.3s ease;
+  }
+
+  .shadow-premium-hover:hover {
+    box-shadow: var(--shadow-premium-hover);
+    transform: translateY(-2px);
+  }
+
+  .shadow-premium-sm {
+    box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .shadow-premium-sm {
+    box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.2);
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2.5s infinite linear;
+  }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* Print styles for invoice */

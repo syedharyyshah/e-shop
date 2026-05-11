@@ -52,6 +52,9 @@ export interface OrderFilters {
   status?: 'all' | 'pending' | 'completed' | 'cancelled' | 'returned' | 'partially_returned';
   startDate?: string;
   endDate?: string;
+  minTotal?: number;
+  maxTotal?: number;
+  paymentMethod?: 'all' | 'cash' | 'card' | 'digital';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   page?: number;
@@ -88,5 +91,10 @@ export interface OrderStats {
   byStatus: {
     _id: string;
     count: number;
+  }[];
+  byPaymentMethod: {
+    _id: string;
+    count: number;
+    revenue: number;
   }[];
 }

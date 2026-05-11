@@ -4,9 +4,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Phone, MapPin, Loader2, Calendar, Receipt, DollarSign, Filter, X, ChevronDown, Wallet, CreditCard, ShoppingBag, Package, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Phone, MapPin, Loader2, Calendar, Receipt, DollarSign, Filter, X, ChevronDown, Wallet, CreditCard, ShoppingBag, Package, FileSpreadsheet, Download, SlidersHorizontal, TrendingUp } from 'lucide-react';
 import { invoiceLoanApi } from '@/services/invoiceLoanApi';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface LoanCustomer {
   customerName: string;
@@ -149,103 +157,106 @@ export default function CustomersPage() {
       <Navbar />
       <div className="p-6 space-y-6">
         {/* Header with search and filters */}
-        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-          <div className="relative w-full lg:w-96">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-primary/10 p-1.5 rounded-md">
-              <Search className="h-4 w-4 text-primary" />
+        {/* Advanced Filters Panel - Always visible */}
+        <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-white/10 relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+          
+          <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* Search Filter */}
+            <div className="space-y-2.5 lg:col-span-1 group/filter">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                <div className="p-1.5 rounded-lg bg-primary/10 text-primary transition-transform group-hover/filter:scale-110">
+                  <Search className="h-3.5 w-3.5" />
+                </div>
+                Search Customers
+              </label>
+              <div className="relative group/input">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-primary transition-colors" />
+                <Input
+                  placeholder="Name, phone, CNIC, address..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10 h-12 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl font-medium text-sm shadow-sm hover:border-primary/50 hover:shadow-md transition-all focus:ring-2 focus:ring-primary/20"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
-            <Input
-              placeholder="Search by name, phone, CNIC or address..."
-              className="pl-12 pr-4 py-2.5 h-11 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md focus:shadow-md transition-all duration-200 placeholder:text-slate-400 text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
             {/* Status Filter */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 h-10">
-                  <Filter className="h-4 w-4" />
-                  {statusFilter === 'all' ? 'All Customers' : 
-                   statusFilter === 'hasPending' ? 'Has Pending' :
-                   statusFilter === 'hasPartial' ? 'Has Partial' : 'All Paid'}
-                  <ChevronDown className="h-3 w-3" />
+            <div className="space-y-2.5 group/filter">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 transition-transform group-hover/filter:scale-110">
+                  <Filter className="h-3.5 w-3.5" />
+                </div>
+                Status Filter
+              </label>
+              <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-blue-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-blue-500/20">
+                  <SelectValue placeholder="All Customers" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-xl">
+                  <SelectItem value="all">All Customers</SelectItem>
+                  <SelectItem value="hasPending">Has Pending Loans</SelectItem>
+                  <SelectItem value="hasPartial">Has Partial Loans</SelectItem>
+                  <SelectItem value="allPaid">All Loans Paid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort By Filter */}
+            <div className="space-y-2.5 group/filter">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 transition-transform group-hover/filter:scale-110">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                </div>
+                Sort By
+              </label>
+              <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-purple-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-purple-500/20">
+                  <SelectValue placeholder="Sort By..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-none shadow-xl">
+                  <SelectItem value="lastLoan">Last Loan Date</SelectItem>
+                  <SelectItem value="name">Customer Name</SelectItem>
+                  <SelectItem value="totalLoans">Total Loans</SelectItem>
+                  <SelectItem value="totalAmount">Total Amount</SelectItem>
+                  <SelectItem value="remaining">Remaining Amount</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort Order & Clear Actions */}
+            <div className="space-y-2.5 group/filter flex flex-col justify-end">
+              <div className="flex items-center gap-3 h-12">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-full rounded-xl font-bold bg-white dark:bg-slate-950 border-slate-200/60 dark:border-slate-800 shadow-sm hover:border-orange-500/50 hover:text-orange-500 transition-all gap-2"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                >
+                  {sortOrder === 'asc' ? <TrendingUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setStatusFilter('all')}>
-                  All Customers
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('hasPending')}>
-                  Has Pending Loans
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('hasPartial')}>
-                  Has Partial Loans
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('allPaid')}>
-                  All Loans Paid
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
-            {/* Sort By */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2 h-10">
-                  Sort: {sortBy === 'lastLoan' ? 'Last Loan' : 
-                         sortBy === 'totalLoans' ? 'Total Loans' :
-                         sortBy === 'totalAmount' ? 'Total Amount' :
-                         sortBy === 'remaining' ? 'Remaining' : 'Name'}
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setSortBy('name')}>
-                  Name
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy('lastLoan')}>
-                  Last Loan Date
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy('totalLoans')}>
-                  Total Loans
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy('totalAmount')}>
-                  Total Amount
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSortBy('remaining')}>
-                  Remaining Amount
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                {hasActiveFilters && (
+                  <Button 
+                    variant="ghost" 
+                    className="h-full px-4 rounded-xl font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                    onClick={clearFilters}
+                  >
+                    <X className="h-4 w-4 mr-1.5" /> Clear
+                  </Button>
+                )}
+              </div>
+            </div>
 
-            {/* Sort Order */}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-10 w-10"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-            >
-              {sortOrder === 'asc' ? '↑' : '↓'}
-            </Button>
-
-            {/* Clear Filters */}
-            {hasActiveFilters && (
-              <Button variant="ghost" className="gap-2 h-10 text-muted-foreground" onClick={clearFilters}>
-                <X className="h-4 w-4" />
-                Clear
-              </Button>
-            )}
           </div>
         </div>
 
@@ -353,7 +364,7 @@ export default function CustomersPage() {
                               <DollarSign className="h-4 w-4 text-green-600" />
                               <div>
                                 <p className="text-xs text-muted-foreground">Total Spent</p>
-                                <p className="font-semibold">Rs. {(customer.totalSpent || 0).toFixed(2)}</p>
+                                <p className="font-semibold">PKR {(customer.totalSpent || 0).toFixed(2)}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -384,21 +395,21 @@ export default function CustomersPage() {
                               <DollarSign className="h-4 w-4 text-green-600" />
                               <div>
                                 <p className="text-xs text-muted-foreground">Total Amount</p>
-                                <p className="font-semibold">Rs. {customer.totalAmount?.toFixed(2)}</p>
+                                <p className="font-semibold">PKR {customer.totalAmount?.toFixed(2)}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <Wallet className="h-4 w-4 text-amber-600" />
                               <div>
                                 <p className="text-xs text-muted-foreground">Remaining</p>
-                                <p className="font-semibold text-amber-600">Rs. {customer.totalRemaining?.toFixed(2)}</p>
+                                <p className="font-semibold text-amber-600">PKR {customer.totalRemaining?.toFixed(2)}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <CreditCard className="h-4 w-4 text-blue-600" />
                               <div>
                                 <p className="text-xs text-muted-foreground">Paid</p>
-                                <p className="font-semibold text-green-600">Rs. {customer.totalPaid?.toFixed(2)}</p>
+                                <p className="font-semibold text-green-600">PKR {customer.totalPaid?.toFixed(2)}</p>
                               </div>
                             </div>
                             </>
@@ -487,7 +498,7 @@ export default function CustomersPage() {
                       tableRows = `
                         <tr><th colspan="2" class="subheader">Shopping Summary</th></tr>
                         <tr><td class="label">Total Orders</td><td class="value number">${selectedCustomer.totalOrders || 0}</td></tr>
-                        <tr><td class="label">Total Spent</td><td class="value number green">Rs. ${(selectedCustomer.totalSpent || 0).toFixed(2)}</td></tr>
+                        <tr><td class="label">Total Spent</td><td class="value number green">PKR ${(selectedCustomer.totalSpent || 0).toFixed(2)}</td></tr>
                         <tr><td class="label">First Order Date</td><td class="value">${formatDate(selectedCustomer.firstOrderDate)}</td></tr>
                         <tr><td class="label">Last Order Date</td><td class="value">${formatDate(selectedCustomer.lastOrderDate)}</td></tr>
                       `;
@@ -495,9 +506,9 @@ export default function CustomersPage() {
                       tableRows = `
                         <tr><th colspan="2" class="subheader">Loan Summary</th></tr>
                         <tr><td class="label">Total Loans</td><td class="value number">${selectedCustomer.totalLoans}</td></tr>
-                        <tr><td class="label">Total Amount</td><td class="value number">Rs. ${selectedCustomer.totalAmount?.toFixed(2)}</td></tr>
-                        <tr><td class="label">Amount Paid</td><td class="value number green">Rs. ${selectedCustomer.totalPaid?.toFixed(2)}</td></tr>
-                        <tr><td class="label">Remaining</td><td class="value number red">Rs. ${selectedCustomer.totalRemaining?.toFixed(2)}</td></tr>
+                        <tr><td class="label">Total Amount</td><td class="value number">PKR ${selectedCustomer.totalAmount?.toFixed(2)}</td></tr>
+                        <tr><td class="label">Amount Paid</td><td class="value number green">PKR ${selectedCustomer.totalPaid?.toFixed(2)}</td></tr>
+                        <tr><td class="label">Remaining</td><td class="value number red">PKR ${selectedCustomer.totalRemaining?.toFixed(2)}</td></tr>
                         <tr><th colspan="2" class="subheader">Loan Status</th></tr>
                         <tr><td class="label">Pending Loans</td><td class="value number red">${selectedCustomer.pendingLoans}</td></tr>
                         <tr><td class="label">Partial Loans</td><td class="value number blue">${selectedCustomer.partialLoans}</td></tr>
@@ -593,7 +604,7 @@ export default function CustomersPage() {
                   </div>
                   <div className="bg-blue-50 p-4 rounded-lg text-center">
                     <DollarSign className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-blue-700">Rs. {(selectedCustomer.totalSpent || 0).toFixed(0)}</p>
+                    <p className="text-2xl font-bold text-blue-700">PKR {(selectedCustomer.totalSpent || 0).toFixed(0)}</p>
                     <p className="text-xs text-blue-600">Total Spent</p>
                   </div>
                   <div className="bg-purple-50 p-4 rounded-lg text-center md:col-span-2">
@@ -611,17 +622,17 @@ export default function CustomersPage() {
                   </div>
                   <div className="bg-green-50 p-4 rounded-lg text-center">
                     <DollarSign className="h-6 w-6 text-green-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-green-700">Rs. {selectedCustomer.totalAmount?.toFixed(0)}</p>
+                    <p className="text-2xl font-bold text-green-700">PKR {selectedCustomer.totalAmount?.toFixed(0)}</p>
                     <p className="text-xs text-green-600">Total Amount</p>
                   </div>
                   <div className="bg-amber-50 p-4 rounded-lg text-center">
                     <Wallet className="h-6 w-6 text-amber-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-amber-700">Rs. {selectedCustomer.totalRemaining?.toFixed(0)}</p>
+                    <p className="text-2xl font-bold text-amber-700">PKR {selectedCustomer.totalRemaining?.toFixed(0)}</p>
                     <p className="text-xs text-amber-600">Remaining</p>
                   </div>
                   <div className="bg-blue-50 p-4 rounded-lg text-center">
                     <CreditCard className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-blue-700">Rs. {selectedCustomer.totalPaid?.toFixed(0)}</p>
+                    <p className="text-2xl font-bold text-blue-700">PKR {selectedCustomer.totalPaid?.toFixed(0)}</p>
                     <p className="text-xs text-blue-600">Paid</p>
                   </div>
                 </div>

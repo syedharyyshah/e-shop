@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, Loader2, Trash2, AlertTriangle, X, Package, User, MapPin, Phone, Calendar, CreditCard, FileText, FileSpreadsheet, Download, RotateCcw, Undo2, Eye, Printer } from 'lucide-react';
+import { Search, Loader2, Trash2, AlertTriangle, X, Package, User, MapPin, Phone, Calendar, CreditCard, FileText, FileSpreadsheet, Download, RotateCcw, Undo2, Eye, Printer, Filter, DollarSign, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { orderApi } from '@/services/orderApi';
 import { returnApi } from '@/services/returnApi';
 import { useToast } from '@/hooks/use-toast';
@@ -63,12 +71,34 @@ export default function OrdersPage() {
   const [returnsLoading, setReturnsLoading] = useState(false);
   const [returnsHistoryOpen, setReturnsHistoryOpen] = useState(false);
   const [invoiceViewOpen, setInvoiceViewOpen] = useState(false);
+  
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [status, setStatus] = useState(searchParams.get('status') || 'all');
+  const [paymentMethod, setPaymentMethod] = useState(searchParams.get('paymentMethod') || 'all');
+  const [startDate, setStartDate] = useState(searchParams.get('startDate') || '');
+  const [endDate, setEndDate] = useState(searchParams.get('endDate') || '');
+  const [minTotal, setMinTotal] = useState(searchParams.get('minTotal') || '');
+  const [maxTotal, setMaxTotal] = useState(searchParams.get('maxTotal') || '');
+  const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'createdAt');
+  const [sortOrder, setSortOrder] = useState(searchParams.get('sortOrder') || 'desc');
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await orderApi.getOrders({ search, limit: 100 });
+      const response = await orderApi.getOrders({ 
+        search, 
+        status: status as any,
+        paymentMethod: paymentMethod as any,
+        startDate,
+        endDate,
+        minTotal: minTotal ? Number(minTotal) : undefined,
+        maxTotal: maxTotal ? Number(maxTotal) : undefined,
+        sortBy,
+        sortOrder: sortOrder as any,
+        limit: 100 
+      });
       if (response.success) {
         setOrders(response.data);
       }
@@ -87,7 +117,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-  }, [search]);
+  }, [search, status, paymentMethod, startDate, endDate, minTotal, maxTotal, sortBy, sortOrder]);
 
   // Refresh orders when navigating from Invoice page after creating an order
   useEffect(() => {
@@ -436,7 +466,7 @@ export default function OrdersPage() {
           </tr>
           <tr>
             <td style="text-align: right; font-weight: bold;">Order Status:</td>
-            <td style="text-align: right;" class="${order.status === 'completed' ? 'status-completed' : 'status-pending'}">${order.status}</td>
+            <td style="text-align: right;" class="${order.status === 'completed' ? 'status-completed' : 'status-pending'}">${order.status === 'completed' && order.existingLoanId ? 'Completed as Loan' : order.status}</td>
           </tr>
           <tr>
             <td style="text-align: right; font-weight: bold;">Order Date:</td>
@@ -484,47 +514,317 @@ export default function OrdersPage() {
     });
   };
 
+  const StatusBadge = ({ status, returnStatus, isLoan }: { status: string; returnStatus?: string; isLoan?: boolean }) => {
+    const config: any = {
+      'completed': {
+        label: isLoan ? 'Completed as Loan' : 'Completed',
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50',
+        dotColor: 'bg-emerald-500',
+        glow: 'shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+      },
+      'pending': {
+        label: 'Pending',
+        className: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50',
+        dotColor: 'bg-amber-500',
+        glow: 'shadow-[0_0_10px_rgba(245,158,11,0.15)]'
+      },
+      'cancelled': {
+        label: 'Cancelled',
+        className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50',
+        dotColor: 'bg-red-500',
+        glow: 'shadow-[0_0_10px_rgba(239,68,68,0.15)]'
+      },
+      'returned': {
+        label: 'Returned',
+        className: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/20 dark:text-orange-400 dark:border-orange-900/50',
+        dotColor: 'bg-orange-500',
+        glow: 'shadow-[0_0_10px_rgba(249,115,22,0.15)]'
+      },
+      'partially_returned': {
+        label: 'Partial Return',
+        className: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-400 dark:border-yellow-900/50',
+        dotColor: 'bg-yellow-500',
+        glow: 'shadow-[0_0_10px_rgba(234,179,8,0.15)]'
+      }
+    };
+
+    const c = config[status] || config['pending'];
+    
+    return (
+      <div className="flex flex-col gap-1">
+        <Badge 
+          variant="outline" 
+          className={cn(
+            "gap-2 px-2.5 py-1 font-bold text-[10px] uppercase tracking-tight rounded-full border transition-all duration-300 w-fit",
+            c.className,
+            c.glow
+          )}
+        >
+          <span className={cn("h-1.5 w-1.5 rounded-full", c.dotColor, status === 'pending' && "animate-pulse")} />
+          {c.label}
+        </Badge>
+        {returnStatus && returnStatus !== 'none' && (
+          <span className="text-[9px] font-black uppercase tracking-widest text-orange-500/70 ml-1">
+            {returnStatus === 'full' ? 'Fully Refunded' : 'Partial Refund'}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       <Navbar />
       <div className="p-6 space-y-6">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="relative w-full sm:w-96">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-primary/10 p-1.5 rounded-md">
-              <Search className="h-4 w-4 text-primary" />
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-[2rem] shadow-premium border border-white/20 dark:border-white/5 transition-all duration-300">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 flex-1">
+            <div className="relative flex-1 group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-primary text-slate-400">
+                <Search className="h-5 w-5" />
+              </div>
+              <Input
+                placeholder="Search orders by ID, customer name or phone..."
+                className="pl-12 pr-10 py-6 bg-white/50 dark:bg-slate-950/50 border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300 placeholder:text-slate-400 text-sm font-medium"
+                value={search}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearch(val);
+                  setSearchParams(prev => {
+                    if (val) prev.set('q', val);
+                    else prev.delete('q');
+                    return prev;
+                  });
+                }}
+              />
+              {search && (
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setSearchParams(prev => {
+                      prev.delete('q');
+                      return prev;
+                    });
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-            <Input
-              placeholder="Search orders by ID, customer name or phone..."
-              className="pl-12 pr-4 py-2.5 h-11 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md focus:shadow-md transition-all duration-200 placeholder:text-slate-400 text-sm"
-              value={search}
-              onChange={(e) => {
-                const val = e.target.value;
-                setSearch(val);
-                setSearchParams(prev => {
-                  if (val) prev.set('q', val);
-                  else prev.delete('q');
-                  return prev;
-                });
-              }}
-            />
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                onClick={fetchOrders} 
+                disabled={loading}
+                className="h-12 px-5 rounded-2xl gap-2 font-bold transition-all duration-300 bg-white/50 dark:bg-slate-950/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-primary"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <RotateCcw className="h-4 w-4" />}
+                <span>Refresh</span>
+              </Button>
+
+              <Button 
+                variant="ghost" 
+                onClick={() => setShowFilters(!showFilters)} 
+                className={cn(
+                  "h-12 px-5 rounded-2xl gap-2 font-bold transition-all duration-300 bg-white/50 dark:bg-slate-950/50 hover:bg-slate-100 dark:hover:bg-slate-800",
+                  showFilters ? "text-primary bg-primary/10" : ""
+                )}
+              >
+                <Filter className="h-4 w-4" />
+                <span>Filters</span>
+                {showFilters ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
+              </Button>
+
+              {selectedOrders.size > 0 && (
+                <Button 
+                  variant="ghost" 
+                  onClick={handleBulkDeleteClick}
+                  disabled={isDeleting}
+                  className="h-12 px-5 rounded-2xl gap-2 font-bold text-destructive hover:bg-destructive/10 transition-all duration-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete ({selectedOrders.size})</span>
+                </Button>
+              )}
+            </div>
           </div>
-          <Button variant="outline" onClick={fetchOrders} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
-          </Button>
-          
-          {/* Bulk Delete Button */}
-          {selectedOrders.size > 0 && (
-            <Button 
-              variant="destructive" 
-              onClick={handleBulkDeleteClick}
-              disabled={isDeleting}
-              className="gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete Selected ({selectedOrders.size})
-            </Button>
-          )}
-        </div>
+
+            <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-950/50 p-1.5 rounded-2xl border-none shadow-sm">
+              <Badge variant="secondary" className="px-3 py-1.5 rounded-xl font-bold bg-white dark:bg-slate-800 shadow-sm border-none">
+                Total Orders: {orders.length}
+              </Badge>
+            </div>
+          </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Status Filter */}
+              <div className="space-y-2.5 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 transition-transform group-hover/filter:scale-110">
+                    <Package className="h-3.5 w-3.5" />
+                  </div>
+                  Status
+                </label>
+                <Select value={status} onValueChange={(val) => setStatus(val)}>
+                  <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-primary/50 hover:shadow-md transition-all focus:ring-2 focus:ring-primary/20">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="returned">Returned</SelectItem>
+                    <SelectItem value="partially_returned">Partial Return</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Method Filter */}
+              <div className="space-y-2.5 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 transition-transform group-hover/filter:scale-110">
+                    <CreditCard className="h-3.5 w-3.5" />
+                  </div>
+                  Payment Method
+                </label>
+                <Select value={paymentMethod} onValueChange={(val) => setPaymentMethod(val)}>
+                  <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-purple-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-purple-500/20">
+                    <SelectValue placeholder="Select Payment" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectItem value="all">All Methods</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
+                    <SelectItem value="digital">Digital</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Date Range */}
+              <div className="space-y-2.5 lg:col-span-2 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-500 transition-transform group-hover/filter:scale-110">
+                    <Calendar className="h-3.5 w-3.5" />
+                  </div>
+                  Date Range
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1 group/input">
+                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-orange-500 transition-colors" />
+                    <Input 
+                      type="date" 
+                      value={startDate} 
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="pl-10 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-medium text-sm shadow-sm hover:border-orange-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-orange-500/20"
+                    />
+                  </div>
+                  <div className="h-px w-4 bg-slate-300 dark:bg-slate-700" />
+                  <div className="relative flex-1 group/input">
+                    <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-orange-500 transition-colors" />
+                    <Input 
+                      type="date" 
+                      value={endDate} 
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="pl-10 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-medium text-sm shadow-sm hover:border-orange-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-orange-500/20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Range */}
+              <div className="space-y-2.5 lg:col-span-2 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 transition-transform group-hover/filter:scale-110">
+                    <DollarSign className="h-3.5 w-3.5" />
+                  </div>
+                  Price Range (Rs.)
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1 group/input">
+                    <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-emerald-500 transition-colors" />
+                    <Input 
+                      type="number" 
+                      placeholder="Min Price"
+                      value={minTotal}
+                      onChange={(e) => setMinTotal(e.target.value)}
+                      className="pl-10 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-medium text-sm shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                  <div className="h-px w-4 bg-slate-300 dark:bg-slate-700" />
+                  <div className="relative flex-1 group/input">
+                    <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-emerald-500 transition-colors" />
+                    <Input 
+                      type="number" 
+                      placeholder="Max Price"
+                      value={maxTotal}
+                      onChange={(e) => setMaxTotal(e.target.value)}
+                      className="pl-10 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-medium text-sm shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sorting */}
+              <div className="space-y-2.5 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-500 transition-transform group-hover/filter:scale-110">
+                    <ArrowUpDown className="h-3.5 w-3.5" />
+                  </div>
+                  Sort By
+                </label>
+                <div className="flex gap-2">
+                  <Select value={sortBy} onValueChange={(val) => setSortBy(val)}>
+                    <SelectTrigger className="flex-1 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-pink-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-pink-500/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-none shadow-xl">
+                      <SelectItem value="createdAt">Date Created</SelectItem>
+                      <SelectItem value="total">Order Total</SelectItem>
+                      <SelectItem value="customerName">Customer Name</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                    className="h-12 w-12 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 hover:border-pink-500/50 hover:text-pink-500 hover:shadow-md transition-all shadow-sm"
+                  >
+                    <ArrowUpDown className={cn("h-4 w-4 transition-transform duration-300", sortOrder === 'asc' ? "" : "rotate-180")} />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Reset Button */}
+              <div className="flex items-end pb-0.5">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setStatus('all');
+                    setPaymentMethod('all');
+                    setStartDate('');
+                    setEndDate('');
+                    setMinTotal('');
+                    setMaxTotal('');
+                    setSortBy('createdAt');
+                    setSortOrder('desc');
+                    setSearch('');
+                    setSearchParams({});
+                  }}
+                  className="w-full h-12 rounded-xl gap-2 font-bold text-slate-500 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all duration-300 border border-transparent hover:border-rose-200 dark:hover:border-rose-500/30"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset All Filters
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
@@ -532,146 +832,167 @@ export default function OrdersPage() {
           </div>
         )}
 
-        <Card className="border-none shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-muted-foreground">
-                    <th className="py-3 px-4 w-10">
-                      <Checkbox 
-                        checked={filteredOrders.length > 0 && selectedOrders.size === filteredOrders.length}
-                        onCheckedChange={toggleSelectAll}
-                        aria-label="Select all orders"
-                      />
-                    </th>
-                    <th className="text-left py-3 px-4 font-medium">Order ID</th>
-                    <th className="text-left py-3 px-4 font-medium">Customer</th>
-                    <th className="text-left py-3 px-4 font-medium">Items</th>
-                    <th className="text-left py-3 px-4 font-medium">Total</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
-                    <th className="text-left py-3 px-4 font-medium">Date</th>
-                    <th className="text-center py-3 px-4 font-medium w-20">Actions</th>
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-[2rem] border border-white/20 dark:border-white/5 shadow-premium overflow-hidden">
+          <ScrollArea className="w-full">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-none text-muted-foreground">
+                  <th className="py-6 pl-8 w-10">
+                    <Checkbox 
+                      checked={filteredOrders.length > 0 && selectedOrders.size === filteredOrders.length}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all orders"
+                    />
+                  </th>
+                  <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Order Details</th>
+                  <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Customer</th>
+                  <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Summary</th>
+                  <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Financials</th>
+                  <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Status</th>
+                  <th className="text-left py-6 px-4 font-bold uppercase tracking-wider text-[11px]">Timeline</th>
+                  <th className="text-right py-6 pr-8 font-bold uppercase tracking-wider text-[11px] w-40">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                      <p className="text-slate-400 mt-4 font-medium">Loading orders...</p>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center">
-                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                        <p className="text-muted-foreground mt-2">Loading orders...</p>
+                ) : filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                      No orders found. Create your first order from the Invoice page.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <tr 
+                      key={order._id} 
+                      className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-t border-slate-100 dark:border-slate-800/50 h-24 cursor-pointer"
+                      onClick={() => handleOrderClick(order)}
+                    >
+                      <td className="pl-8" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox 
+                          checked={selectedOrders.has(order._id)}
+                          onCheckedChange={() => toggleSelectOrder(order._id)}
+                          aria-label={`Select order ${order._id.slice(-6)}`}
+                        />
                       </td>
-                    </tr>
-                  ) : filteredOrders.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                        No orders found. Create your first order from the Invoice page.
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="font-black text-slate-900 dark:text-white group-hover:text-primary transition-colors text-base">#{order._id.slice(-6)}</span>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <CreditCard className="h-3 w-3 text-slate-400" />
+                            <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400">{order.paymentMethod}</span>
+                          </div>
+                        </div>
                       </td>
-                    </tr>
-                  ) : (
-                    filteredOrders.map((order) => (
-                      <tr 
-                        key={order._id} 
-                        className="border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => handleOrderClick(order)}
-                      >
-                        <td className="py-3 px-4">
-                          <Checkbox 
-                            checked={selectedOrders.has(order._id)}
-                            onCheckedChange={() => toggleSelectOrder(order._id)}
-                            aria-label={`Select order ${order._id.slice(-6)}`}
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">#{order._id.slice(-6)}</span>
-                            {order.existingLoanId && (
-                              <Badge variant="outline" className="text-amber-600 border-amber-600 text-xs">
-                                Existing Loan
-                              </Badge>
-                            )}
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            <User className="h-5 w-5 text-slate-400" />
                           </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{order.customerName}</p>
-                            <p className="text-xs text-muted-foreground">{order.customerPhone}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[200px]">{order.customerAddress}</p>
+                          <div className="flex flex-col">
+                            <p className="font-bold text-slate-800 dark:text-slate-200">{order.customerName}</p>
+                            <p className="text-[10px] text-slate-400 font-bold tracking-tight">{order.customerPhone || 'NO PHONE'}</p>
                           </div>
-                        </td>
-                        <td className="py-3 px-4">{order.items.length} item(s)</td>
-                        <td className="py-3 px-4 font-medium">Rs. {order.total.toFixed(2)}</td>
-                        <td className="py-3 px-4">
-                          <Badge
-                            variant={
-                              order.status === 'completed' ? 'default' : 
-                              order.status === 'pending' ? 'secondary' : 
-                              order.status === 'cancelled' ? 'destructive' :
-                              order.status === 'returned' ? 'destructive' :
-                              'outline'
-                            }
-                            className={`capitalize ${
-                              order.status === 'returned' ? 'bg-orange-100 text-orange-700 border-orange-300' :
-                              order.status === 'partially_returned' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : ''
-                            }`}
-                          >
-                            {order.status === 'partially_returned' ? 'Partially Returned' : order.status}
-                          </Badge>
-                          {order.returnStatus !== 'none' && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {order.returnStatus === 'full' ? 'Fully Returned' : 'Partially Returned'}
-                            </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1.5">
+                            <Package className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{order.items.length} Product{order.items.length !== 1 ? 's' : ''}</span>
+                          </div>
+                          {order.existingLoanId && (
+                            <span className="text-[9px] font-black uppercase tracking-widest text-amber-500 mt-0.5">Loan Linked</span>
                           )}
-                        </td>
-                        <td className="py-3 px-4 text-muted-foreground">{formatDate(order.createdAt)}</td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            {/* Return button - only show if not cancelled or fully returned */}
-                            {order.status !== 'cancelled' && order.status !== 'returned' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                onClick={(e) => handleReturnClick(order, e)}
-                                title="Return Items"
-                              >
-                                <Undo2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                            
-                            {/* View returns history - show if order has returns */}
-                            {order.returnStatus !== 'none' && order.returns && order.returns.length > 0 && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={(e) => viewReturnsHistory(order, e)}
-                                title="View Returns History"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
-                            
-                            {/* Delete button */}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={(e) => handleDeleteClick(order._id, e)}
-                              disabled={isDeleting}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="font-black text-lg text-primary">Rs. {order.total.toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Gross Total</span>
+                        </div>
+                      </td>
+                      <td>
+                        <StatusBadge status={order.status} returnStatus={order.returnStatus} isLoan={!!order.existingLoanId} />
+                      </td>
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{new Date(order.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                          <span className="text-[10px] text-slate-400 font-medium lowercase italic">{new Date(order.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
+                      <td className="text-right pr-8" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5 transition-all duration-300">
+                          {/* Return button */}
+                          {order.status !== 'cancelled' && order.status !== 'returned' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-950/20 text-orange-600 hover:bg-orange-600 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                    onClick={(e) => handleReturnClick(order, e)}
+                                  >
+                                    <Undo2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Process Return</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          
+                          {/* View returns history */}
+                          {order.returnStatus !== 'none' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/20 text-blue-600 hover:bg-blue-600 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                    onClick={(e) => viewReturnsHistory(order, e)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>View Returns</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                          
+                          {/* Delete button */}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="secondary"
+                                  size="icon"
+                                  className="h-9 w-9 rounded-xl bg-red-50 dark:bg-red-950/20 text-red-500 hover:bg-red-500 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                  onClick={(e) => handleDeleteClick(order._id, e)}
+                                  disabled={isDeleting}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete Order</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </ScrollArea>
+        </div>
 
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -761,7 +1082,11 @@ export default function OrdersPage() {
                         selectedOrder.status === 'partially_returned' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' : ''
                       }`}
                     >
-                      {selectedOrder.status === 'partially_returned' ? 'Partially Returned' : selectedOrder.status}
+                      {selectedOrder.status === 'completed' && selectedOrder.existingLoanId 
+                        ? 'Completed as Loan' 
+                        : selectedOrder.status === 'partially_returned' 
+                        ? 'Partially Returned' 
+                        : selectedOrder.status}
                     </Badge>
                     {selectedOrder.returnStatus !== 'none' && (
                       <span className="text-xs text-muted-foreground">
@@ -1223,7 +1548,11 @@ export default function OrdersPage() {
                             selectedOrder.status === 'partially_returned' ? 'bg-yellow-100 text-yellow-700' : ''
                           }`}
                         >
-                          {selectedOrder.status === 'partially_returned' ? 'Partially Returned' : selectedOrder.status}
+                          {selectedOrder.status === 'completed' && selectedOrder.existingLoanId 
+                            ? 'Completed as Loan' 
+                            : selectedOrder.status === 'partially_returned' 
+                            ? 'Partially Returned' 
+                            : selectedOrder.status}
                         </Badge>
                       </div>
                     </div>
