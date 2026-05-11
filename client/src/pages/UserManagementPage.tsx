@@ -181,7 +181,7 @@ export default function UserManagementPage() {
           <div className="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded animate-pulse">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-yellow-600" />
+                <Bell className="w-5 h-5 text-amber-600" strokeWidth={1.5} />
                 <p className="text-yellow-800 font-medium">
                   New user registration request received! Please review pending approvals below.
                 </p>

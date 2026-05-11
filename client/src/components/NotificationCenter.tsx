@@ -166,13 +166,19 @@ export function NotificationCenter({ trigger }: NotificationCenterProps) {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="relative h-10 w-10 rounded-full hover:bg-muted transition-all duration-300"
+            className="relative h-10 w-10 rounded-full hover:bg-primary/10 transition-all duration-300 group"
           >
-            <Bell className={cn("h-5 w-5 transition-transform duration-300", open && "scale-110 text-primary")} />
+            <Bell 
+              className={cn(
+                "h-6 w-6 transition-all duration-500 text-muted-foreground group-hover:text-primary group-hover:rotate-[15deg]", 
+                open && "scale-110 text-primary rotate-0"
+              )} 
+              strokeWidth={1.5}
+            />
             {unreadCount > 0 && (
               <span className={cn(
-                "absolute right-1.5 top-1.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full border-2 border-background px-1 text-[10px] font-bold text-white shadow-sm transition-all duration-300",
-                hasUrgent ? "bg-red-500 animate-pulse" : "bg-primary"
+                "absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full border-2 border-background px-1 text-[10px] font-bold text-white shadow-[0_2px_10px_rgba(59,130,246,0.4)] transition-all duration-300 ring-1 ring-primary/20",
+                hasUrgent ? "bg-red-500 animate-pulse shadow-[0_0_12px_rgba(239,68,68,0.5)]" : "bg-primary"
               )}>
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>

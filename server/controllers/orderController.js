@@ -13,6 +13,9 @@ exports.getOrders = async (req, res) => {
       status,
       startDate,
       endDate,
+      minTotal,
+      maxTotal,
+      paymentMethod,
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = 1,
@@ -31,6 +34,22 @@ exports.getOrders = async (req, res) => {
     // Status filter
     if (status && status !== 'all') {
       filter.status = status;
+    }
+
+    // Payment Method filter
+    if (paymentMethod && paymentMethod !== 'all') {
+      filter.paymentMethod = paymentMethod;
+    }
+
+    // Total Price range filter
+    if (minTotal || maxTotal) {
+      filter.total = {};
+      if (minTotal) {
+        filter.total.$gte = Number(minTotal);
+      }
+      if (maxTotal) {
+        filter.total.$lte = Number(maxTotal);
+      }
     }
 
     // Date range filter
@@ -408,6 +427,18 @@ exports.getOrderStats = async (req, res) => {
       }
     ]);
 
+    // Payment Method breakdown
+    const paymentStats = await Order.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$paymentMethod',
+          count: { $sum: 1 },
+          revenue: { $sum: '$total' }
+        }
+      }
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
@@ -425,7 +456,8 @@ exports.getOrderStats = async (req, res) => {
           orders: 0,
           revenue: 0
         },
-        byStatus: statusStats
+        byStatus: statusStats,
+        byPaymentMethod: paymentStats
       }
     });
   } catch (error) {

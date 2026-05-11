@@ -134,7 +134,7 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <Store className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">ShopFlow Store</span>
+                <span className="text-sm">SHS Shop Flow Store</span>
               </div>
             </div>
           </CardContent>
@@ -143,9 +143,9 @@ export default function SettingsPage() {
         <Card className="border-none shadow-sm">
           <CardHeader><CardTitle className="text-lg">Store Settings</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div><Label>Store Name</Label><Input defaultValue="ShopFlow Store" className="mt-1" /></div>
-            <div><Label>Store Email</Label><Input defaultValue="admin@shopflow.com" className="mt-1" /></div>
-            <div><Label>Currency</Label><Input defaultValue="USD ($)" className="mt-1" /></div>
+            <div><Label>Store Name</Label><Input defaultValue="SHS Shop Flow Store" className="mt-1" /></div>
+            <div><Label>Store Email</Label><Input defaultValue="admin@shsshopflow.com" className="mt-1" /></div>
+            <div><Label>Currency</Label><Input defaultValue="PKR" className="mt-1" /></div>
             <Button>Save Changes</Button>
           </CardContent>
         </Card>

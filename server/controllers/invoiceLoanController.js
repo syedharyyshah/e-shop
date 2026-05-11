@@ -121,6 +121,13 @@ exports.createInvoiceLoan = async (req, res) => {
       notes: notes || ''
     });
 
+    // Update the original order(s) to link back to this loan
+    const orderIdsToUpdate = Array.isArray(orderId) ? orderId : [orderId];
+    await Order.updateMany(
+      { _id: { $in: orderIdsToUpdate } },
+      { $set: { existingLoanId: loan._id } }
+    );
+
     res.status(201).json({
       success: true,
       message: 'Invoice loan created successfully',

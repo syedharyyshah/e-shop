@@ -13,12 +13,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Search, Pencil, Trash2, X, SlidersHorizontal, AlertTriangle, CheckCircle2, TrendingUp, PackageX, LayoutGrid, Table2, Building2, Package, Loader2, Boxes, ShoppingCart, ChevronUp, FileSpreadsheet } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, X, SlidersHorizontal, AlertTriangle, CheckCircle2, TrendingUp, PackageX, LayoutGrid, Table2, Building2, Package, Loader2, Boxes, ShoppingCart, ChevronUp, FileSpreadsheet, DollarSign, RotateCcw } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { productApi } from '@/services/productApi';
 import { Product, ProductFilters, ViewMode, StockStatus } from '@/types/product';
 import { useStore } from '@/store/useStore';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 function formatPKR(price: number): string {
   return new Intl.NumberFormat('en-PK', {
@@ -98,36 +99,47 @@ export default function ProductsPage() {
   // StockBadge component using dynamic thresholds
   const StockBadge = useCallback(({ stock }: { stock: number }) => {
     const status = getStockStatus(stock);
-    const config: Record<StockStatus, { label: string; className: string; icon: React.ReactNode; dotColor: string }> = {
+    const config: Record<StockStatus, { label: string; className: string; icon: React.ReactNode; dotColor: string; glow: string }> = {
       'out-of-stock': {
         label: 'Out of Stock',
-        className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800',
-        icon: <PackageX className="h-3 w-3" />,
+        className: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/50',
+        icon: <PackageX className="h-3.5 w-3.5" />,
         dotColor: 'bg-red-500',
+        glow: 'shadow-[0_0_10px_rgba(239,68,68,0.2)]'
       },
       'low-stock': {
-        label: `Low Stock (${stock})`,
-        className: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800',
-        icon: <AlertTriangle className="h-3 w-3" />,
-        dotColor: 'bg-orange-500',
+        label: `Low: ${stock}`,
+        className: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50',
+        icon: <AlertTriangle className="h-3.5 w-3.5" />,
+        dotColor: 'bg-amber-500',
+        glow: 'shadow-[0_0_10px_rgba(245,158,11,0.2)]'
       },
       'in-stock': {
-        label: `In Stock (${stock})`,
-        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800',
-        icon: <CheckCircle2 className="h-3 w-3" />,
+        label: `In Stock: ${stock}`,
+        className: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50',
+        icon: <CheckCircle2 className="h-3.5 w-3.5" />,
         dotColor: 'bg-emerald-500',
+        glow: 'shadow-[0_0_10px_rgba(16,185,129,0.2)]'
       },
       'high-stock': {
-        label: `High Stock (${stock})`,
-        className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800',
-        icon: <TrendingUp className="h-3 w-3" />,
+        label: `High: ${stock}`,
+        className: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50',
+        icon: <TrendingUp className="h-3.5 w-3.5" />,
         dotColor: 'bg-blue-500',
+        glow: 'shadow-[0_0_10px_rgba(59,130,246,0.2)]'
       },
     };
     const c = config[status];
     return (
-      <Badge variant="outline" className={`gap-1.5 font-medium text-xs ${c.className}`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${c.dotColor}`} />
+      <Badge 
+        variant="outline" 
+        className={cn(
+          "gap-2 px-2.5 py-1 font-bold text-[11px] uppercase tracking-tight rounded-full border transition-all duration-300 min-w-[100px] justify-start",
+          c.className,
+          c.glow
+        )}
+      >
+        <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", c.dotColor)} />
         {c.label}
       </Badge>
     );
@@ -608,55 +620,70 @@ export default function ProductsPage() {
       <Navbar />
       <div className="p-4 sm:p-6 space-y-4">
         {/* Search + Actions bar */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-96">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 bg-primary/10 p-1.5 rounded-md">
-                <Search className="h-4 w-4 text-primary" />
+        {/* Search + Actions bar */}
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md p-4 rounded-[2rem] shadow-premium border border-white/20 dark:border-white/5 transition-all duration-300">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 flex-1">
+            <div className="relative flex-1 group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 transition-colors group-focus-within:text-primary text-slate-400">
+                <Search className="h-5 w-5" />
               </div>
               <Input
                 placeholder="Search products, companies, categories..."
-                className="pl-12 pr-4 py-2.5 h-11 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 rounded-xl shadow-sm hover:shadow-md focus:shadow-md transition-all duration-200 placeholder:text-slate-400 text-sm"
+                className="pl-12 pr-4 py-6 bg-white/50 dark:bg-slate-950/50 border-none rounded-2xl shadow-sm focus:ring-2 focus:ring-primary/20 transition-all duration-300 placeholder:text-slate-400 text-sm font-medium"
                 value={search}
                 onChange={(e) => updateParam('q', e.target.value)}
               />
             </div>
-            <Button
-              variant={showFilters ? 'secondary' : 'outline'}
-              size="icon"
-              onClick={() => setShowFilters(!showFilters)}
-              className="shrink-0"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant={showFilters ? 'secondary' : 'ghost'}
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "h-12 px-5 rounded-2xl gap-2 font-bold transition-all duration-300",
+                  showFilters 
+                    ? "bg-primary/10 text-primary hover:bg-primary/20" 
+                    : "bg-white/50 dark:bg-slate-950/50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-primary"
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span>Filters</span>
+                {hasFilters && <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
+              </Button>
+
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="h-12">
+                <TabsList className="h-full bg-white/50 dark:bg-slate-950/50 rounded-2xl p-1 border-none shadow-sm">
+                  <TabsTrigger value="table" className="rounded-xl px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">
+                    <Table2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline font-bold">Table</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="grid" className="rounded-xl px-4 py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all duration-300">
+                    <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline font-bold">Grid</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)} className="w-auto">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="table" className="flex items-center gap-1.5">
-                  <Table2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Table</span>
-                </TabsTrigger>
-                <TabsTrigger value="grid" className="flex items-center gap-1.5">
-                  <LayoutGrid className="h-4 w-4" />
-                  <span className="hidden sm:inline">Grid</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+
+          <div className="flex items-center gap-3">
             <Button
-              className="shrink-0 bg-[#217346] hover:bg-[#1a5c38] text-white border-0"
+              className="h-12 px-6 rounded-2xl bg-success hover:bg-success/90 text-white shadow-lg shadow-success/20 hover:shadow-success/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-none font-bold gap-2"
               onClick={exportToExcel}
               disabled={products.length === 0}
             >
-              <FileSpreadsheet className="mr-2 h-4 w-4" /> Download Excel
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden md:inline">Download Excel</span>
             </Button>
+            
             <Dialog open={dialogOpen} onOpenChange={(open) => {
               setDialogOpen(open);
               if (!open) resetForm();
             }}>
               <DialogTrigger asChild>
-                <Button className="shrink-0" onClick={() => { resetForm(); setDialogOpen(true); }}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Product
+                <Button className="h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 border-none font-bold gap-2" onClick={() => { resetForm(); setDialogOpen(true); }}>
+                  <Plus className="h-5 w-5" />
+                  <span>Add Product</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -909,74 +936,115 @@ export default function ProductsPage() {
 
         {/* Advanced Filters Panel */}
         {showFilters && (
-          <Card className="border shadow-sm animate-in slide-in-from-top-2 duration-200">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-foreground">Filters</span>
-                {hasFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-7 text-xs text-muted-foreground">
-                    <X className="h-3 w-3 mr-1" /> Clear All
-                  </Button>
-                )}
+          <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+            <div className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+              
+              {/* Stock Status Filter */}
+              <div className="space-y-2.5 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500 transition-transform group-hover/filter:scale-110">
+                    <Package className="h-3.5 w-3.5" />
+                  </div>
+                  Stock Status
+                </label>
+                <Select value={stockFilter} onValueChange={(v) => updateParam('stock', v)}>
+                  <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-blue-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-blue-500/20">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="in-stock">In Stock</SelectItem>
+                    <SelectItem value="low-stock">Low Stock</SelectItem>
+                    <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Stock Status</Label>
-                  <Select value={stockFilter} onValueChange={(v) => updateParam('stock', v)}>
-                    <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="in-stock">In Stock</SelectItem>
-                      <SelectItem value="low-stock">Low Stock</SelectItem>
-                      <SelectItem value="out-of-stock">Out of Stock</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+              {/* Category Filter */}
+              <div className="space-y-2.5 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-500 transition-transform group-hover/filter:scale-110">
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </div>
+                  Category
+                </label>
+                <Select value={categoryFilter} onValueChange={(v) => updateParam('category', v)}>
+                  <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-purple-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-purple-500/20">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Company Filter */}
+              <div className="space-y-2.5 group/filter">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                  <div className="p-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-500 transition-transform group-hover/filter:scale-110">
+                    <Building2 className="h-3.5 w-3.5" />
+                  </div>
+                  Company
+                </label>
+                <Select value={companyFilter} onValueChange={(v) => updateParam('company', v)}>
+                  <SelectTrigger className="bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-bold shadow-sm hover:border-orange-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-orange-500/20">
+                    <SelectValue placeholder="All Companies" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectItem value="all">All Companies</SelectItem>
+                    {companies.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Price Range Filter */}
+              <div className="space-y-2.5 lg:col-span-2 group/filter">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1 flex items-center gap-2 transition-colors">
+                    <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 transition-transform group-hover/filter:scale-110">
+                      <DollarSign className="h-3.5 w-3.5" />
+                    </div>
+                    Price Range (PKR)
+                  </label>
+                  {hasFilters && (
+                    <Button variant="ghost" size="sm" onClick={clearFilters} className="h-6 px-2 text-[10px] font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-md transition-colors">
+                      <RotateCcw className="h-3 w-3 mr-1" /> Clear All
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Category</Label>
-                  <Select value={categoryFilter} onValueChange={(v) => updateParam('category', v)}>
-                    <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {categories.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Company</Label>
-                  <Select value={companyFilter} onValueChange={(v) => updateParam('company', v)}>
-                    <SelectTrigger><SelectValue placeholder="All Companies" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Companies</SelectItem>
-                      {companies.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Min Price (PKR)</Label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={priceMin}
-                    onChange={(e) => updateParam('priceMin', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-1.5 block">Max Price (PKR)</Label>
-                  <Input
-                    type="number"
-                    placeholder="No limit"
-                    value={priceMax}
-                    onChange={(e) => updateParam('priceMax', e.target.value)}
-                  />
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1 group/input">
+                    <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-emerald-500 transition-colors" />
+                    <Input 
+                      type="number" 
+                      placeholder="Min Price"
+                      value={priceMin}
+                      onChange={(e) => updateParam('priceMin', e.target.value)}
+                      className="pl-10 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-medium text-sm shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                  <div className="h-px w-4 bg-slate-300 dark:bg-slate-700" />
+                  <div className="relative flex-1 group/input">
+                    <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover/input:text-emerald-500 transition-colors" />
+                    <Input 
+                      type="number" 
+                      placeholder="Max Price"
+                      value={priceMax}
+                      onChange={(e) => updateParam('priceMax', e.target.value)}
+                      className="pl-10 bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 rounded-xl h-12 font-medium text-sm shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+
+            </div>
+          </div>
         )}
 
         {/* Stock Summary Badges - Using actual backend data */}
@@ -988,65 +1056,121 @@ export default function ProductsPage() {
                 key: 'all', 
                 count: totalProducts, 
                 label: 'All Products', 
-                bg: 'bg-slate-100 dark:bg-slate-800', 
-                text: 'text-slate-700 dark:text-slate-300', 
-                border: 'border-slate-200 dark:border-slate-700',
-                icon: Boxes
+                color: 'blue',
+                icon: Boxes,
+                activeClass: 'text-blue-600 dark:text-blue-400',
+                bgClass: 'bg-blue-500',
+                shadowClass: 'shadow-blue-500/20',
+                glowClass: 'bg-blue-400/10'
               },
               { 
                 key: 'out-of-stock', 
                 count: inventoryStats.outOfStock, 
                 label: 'Out of Stock', 
-                bg: 'bg-red-100 dark:bg-red-950/40', 
-                text: 'text-red-700 dark:text-red-400', 
-                border: 'border-red-200 dark:border-red-800',
-                icon: PackageX
+                color: 'red',
+                icon: PackageX,
+                activeClass: 'text-red-600 dark:text-red-400',
+                bgClass: 'bg-red-500',
+                shadowClass: 'shadow-red-500/20',
+                glowClass: 'bg-red-400/10'
               },
               { 
                 key: 'low-stock', 
                 count: inventoryStats.lowStock, 
                 label: 'Low Stock', 
-                bg: 'bg-amber-100 dark:bg-amber-950/40', 
-                text: 'text-amber-700 dark:text-amber-400', 
-                border: 'border-amber-200 dark:border-amber-800',
-                icon: AlertTriangle
+                color: 'amber',
+                icon: AlertTriangle,
+                activeClass: 'text-amber-600 dark:text-amber-400',
+                bgClass: 'bg-amber-500',
+                shadowClass: 'shadow-amber-500/20',
+                glowClass: 'bg-amber-400/10'
               },
               { 
                 key: 'in-stock', 
                 count: inventoryStats.inStock, 
                 label: 'In Stock', 
-                bg: 'bg-emerald-100 dark:bg-emerald-950/40', 
-                text: 'text-emerald-700 dark:text-emerald-400', 
-                border: 'border-emerald-200 dark:border-emerald-800',
-                icon: CheckCircle2
+                color: 'emerald',
+                icon: CheckCircle2,
+                activeClass: 'text-emerald-600 dark:text-emerald-400',
+                bgClass: 'bg-emerald-500',
+                shadowClass: 'shadow-emerald-500/20',
+                glowClass: 'bg-emerald-400/10'
               },
               { 
                 key: 'high-stock', 
                 count: inventoryStats.highStock, 
                 label: 'High Stock', 
-                bg: 'bg-blue-100 dark:bg-blue-950/40', 
-                text: 'text-blue-700 dark:text-blue-400', 
-                border: 'border-blue-200 dark:border-blue-800',
-                icon: TrendingUp
+                color: 'indigo',
+                icon: TrendingUp,
+                activeClass: 'text-indigo-600 dark:text-indigo-400',
+                bgClass: 'bg-indigo-500',
+                shadowClass: 'shadow-indigo-500/20',
+                glowClass: 'bg-indigo-400/10'
               },
             ];
             
-            return badges.map(badge => (
-              <button
-                key={badge.key}
-                onClick={() => updateParam('stock', badge.key)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${badge.bg} ${badge.text} ${badge.border} hover:shadow-md transition-all duration-200 ${stockFilter === badge.key ? 'ring-2 ring-offset-1 ring-primary' : ''}`}
-              >
-                <badge.icon className="h-4 w-4" />
-                <div className="flex flex-col items-start">
-                  <span className="text-lg font-bold leading-none">{badge.count}</span>
-                  <span className="text-xs font-medium opacity-90">{badge.label}</span>
-                </div>
-                {stockFilter === badge.key && (
-                  <span className="ml-1 text-[10px] bg-white/50 dark:bg-black/30 px-1.5 py-0.5 rounded">Active</span>
-                )}
-              </button>
-            ));
+            return (
+              <div className="flex items-center gap-2 p-1.5 bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur-xl rounded-[2rem] border border-slate-200/50 dark:border-slate-800/50 w-full overflow-x-auto no-scrollbar scroll-smooth">
+                {badges.map(badge => {
+                  const isActive = stockFilter === badge.key;
+                  return (
+                    <button
+                      key={badge.key}
+                      onClick={() => updateParam('stock', badge.key)}
+                      className={cn(
+                        "relative flex items-center gap-3 px-4 py-3 rounded-[1.5rem] transition-all duration-300 group overflow-hidden flex-1 min-w-[150px]",
+                        isActive 
+                          ? "bg-white dark:bg-slate-800 shadow-premium-sm scale-100" 
+                          : "hover:bg-white/40 dark:hover:bg-slate-800/40 hover:scale-105 hover:shadow-lg hover:z-10"
+                      )}
+                    >
+                      {/* Active Background Glow */}
+                      {isActive && (
+                        <div className={cn(
+                          "absolute inset-0 opacity-10 blur-xl transition-all duration-300",
+                          badge.glowClass
+                        )} />
+                      )}
+                      
+                      <div className={cn(
+                        "flex items-center justify-center h-10 w-10 rounded-2xl transition-all duration-300 flex-shrink-0",
+                        isActive 
+                          ? `${badge.bgClass} text-white shadow-lg ${badge.shadowClass} scale-100` 
+                          : "bg-slate-200/50 dark:bg-slate-800/50 text-slate-500 group-hover:scale-110"
+                      )}>
+                        <badge.icon className="h-5 w-5" />
+                      </div>
+
+                      <div className="flex flex-col items-start relative z-10 text-left">
+                        <span className={cn(
+                          "text-xl font-black leading-none transition-all duration-500",
+                          isActive ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"
+                        )}>
+                          {badge.count}
+                        </span>
+                        <span className={cn(
+                          "text-[10px] uppercase tracking-wider font-bold opacity-70 transition-all duration-500 whitespace-nowrap",
+                          isActive ? badge.activeClass : "text-slate-400 dark:text-slate-500"
+                        )}>
+                          {badge.label}
+                        </span>
+                      </div>
+
+                      {/* Active Indicator Line */}
+                      <div className={cn(
+                        "absolute bottom-0 left-1/2 -translate-x-1/2 h-1 rounded-full transition-all duration-500",
+                        isActive ? `w-8 ${badge.bgClass}` : "w-0 bg-transparent"
+                      )} />
+
+                      {/* Active Badge Label (Optional, replaced by design) */}
+                      {isActive && (
+                        <div className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            );
           })()}
         </div>
 
@@ -1260,132 +1384,136 @@ export default function ProductsPage() {
 
         {/* Products Table View */}
         {!isLoading && viewMode === 'table' && products.length > 0 && (
-          <Card className="border shadow-sm">
-            <CardContent className="p-0">
-              <ScrollArea className="w-full">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-16">Image</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="hidden md:table-cell">Company</TableHead>
-                      <TableHead className="hidden sm:table-cell">Category</TableHead>
-                      <TableHead className="text-right">Price (PKR)</TableHead>
-                      <TableHead>Stock</TableHead>
-                      <TableHead className="hidden lg:table-cell">Unit</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.map((product) => (
-                      <TableRow key={product._id} className="group">
-                        <TableCell>
-                          <div className="h-10 w-10 rounded-lg overflow-hidden bg-muted">
-                            <ProductImage src={product.imageUrl} alt={product.productName} />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium line-clamp-1">{product.productName}</p>
-                            <p className="text-xs text-muted-foreground md:hidden">{product.companyName}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
+          <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-md rounded-[2rem] border border-white/20 dark:border-white/5 shadow-premium overflow-hidden">
+            <ScrollArea className="w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-none">
+                    <TableHead className="w-20 py-6 pl-8">Image</TableHead>
+                    <TableHead className="min-w-[200px]">Product Info</TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[150px]">Brand & Category</TableHead>
+                    <TableHead className="text-right min-w-[120px]">Price (PKR)</TableHead>
+                    <TableHead className="w-[140px]">Inventory</TableHead>
+                    <TableHead className="hidden lg:table-cell min-w-[220px]">Unit & Bulk Details</TableHead>
+                    <TableHead className="text-right pr-8 w-40">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {products.map((product) => (
+                    <TableRow key={product._id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors border-slate-100 dark:border-slate-800/50 h-24">
+                      <TableCell className="pl-8">
+                        <div className="h-14 w-14 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 group-hover:scale-110 transition-transform duration-500 shadow-sm">
+                          <ProductImage src={product.imageUrl} alt={product.productName} />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-primary transition-colors">{product.productName}</span>
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mt-0.5">{product.baseUnit || 'piece'} based product</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-col gap-1.5">
                           <div className="flex items-center gap-1.5">
-                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-sm">{product.companyName}</span>
+                            <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{product.companyName}</span>
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge variant="outline" className="font-normal">
+                          <Badge variant="secondary" className="w-fit py-0 px-2 text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border-none">
                             {product.category}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-primary">
-                          {formatPKR(product.price)}
-                        </TableCell>
-                        <TableCell>
-                          <StockBadge stock={product.stockQuantity} />
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
-                          <div className="space-y-0.5">
-                            <span>{product.piecesPerUnit || 1} {product.baseUnit || 'piece'} @ {formatPKR(product.price)}</span>
-                            {product.parentUnit && product.unitsPerParent && (
-                              <>
-                                {/* Bulk price line */}
-                                <div className="text-sm font-medium text-primary">
-                                  1 {product.parentUnit} @ {formatPKR(product.price * product.unitsPerParent)}
-                                </div>
-                                {/* Stock: 400 packets (40 cartons) */}
-                                <div className="text-xs text-emerald-600">
-                                  Stock: {product.stockQuantity} {product.baseUnit}
-                                  ({Math.floor(product.stockQuantity / product.unitsPerParent)} {product.parentUnit})
-                                </div>
-                                {/* Conversion: Carton (1/10) */}
-                                <div className="text-xs text-slate-500">
-                                  {product.parentUnit} (1/{product.unitsPerParent})
-                                  {product.costPerUnit && <span className="ml-1">| Cost: {formatPKR(product.costPerUnit)}</span>}
-                                  {product.profitPerUnit && product.profitPerUnit > 0 && <span className="ml-1 text-emerald-600">| Profit: {formatPKR(product.profitPerUnit)}</span>}
-                                </div>
-                              </>
-                            )}
-                            {!product.parentUnit && (
-                              <div className="text-xs text-slate-500">Stock: {product.stockQuantity} {product.baseUnit}</div>
-                            )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="font-black text-lg text-primary">{formatPKR(product.price)}</span>
+                          <span className="text-[10px] text-slate-400 font-medium">Selling Price</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <StockBadge stock={product.stockQuantity} />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">Base Unit</span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">1 {product.baseUnit || 'pc'}</span>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
-                                    onClick={() => handleSaleClick(product)}
-                                    disabled={product.stockQuantity === 0}
-                                  >
-                                    <ShoppingCart className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Sell</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditClick(product)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Edit</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDeleteClick(product)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Delete</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                          {product.parentUnit && (
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-primary uppercase font-bold">Bulk Unit</span>
+                              <span className="text-xs font-bold text-primary">1 {product.parentUnit} ({product.unitsPerParent})</span>
+                            </div>
+                          )}
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">In Stock</span>
+                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              {product.stockQuantity} {product.baseUnit || 'pcs'}
+                            </span>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                          {product.parentUnit && (
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-emerald-500 uppercase font-bold">Margin</span>
+                              <span className="text-xs font-bold text-emerald-500">+{formatPKR(product.profitPerUnit || 0)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right pr-8">
+                        <div className="flex items-center justify-end gap-2 transition-all duration-300">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="secondary"
+                                  size="icon"
+                                  className="h-9 w-9 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                  onClick={() => handleSaleClick(product)}
+                                  disabled={product.stockQuantity === 0}
+                                >
+                                  <ShoppingCart className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Quick Sale</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="secondary" 
+                                  size="icon" 
+                                  className="h-9 w-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm" 
+                                  onClick={() => handleEditClick(product)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit Details</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="secondary"
+                                  size="icon"
+                                  className="h-9 w-9 rounded-xl bg-red-50 dark:bg-red-950/20 text-red-500 hover:bg-red-500 hover:text-white hover:scale-110 active:scale-95 transition-all duration-300 shadow-sm"
+                                  onClick={() => handleDeleteClick(product)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Remove Product</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </div>
         )}
       </div>
 
